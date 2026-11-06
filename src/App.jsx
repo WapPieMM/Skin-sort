@@ -35,10 +35,6 @@ import PosterCanvas from './components/PosterCanvas';
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
 const SAVED_POSTERS_KEY = 'rov_white_angel_saved_posters_v2';
 
-function buildInitialSelection() {
-  return [];
-}
-
 export function App() {
   // 1. Hero & Skin Catalog State (Persisted in localStorage)
   const [heroes, setHeroes] = useState(() => {
@@ -87,10 +83,10 @@ export function App() {
   // Modal state for full Hero & Skin database manager
   const [isManagerOpen, setIsManagerOpen] = useState(false);
 
-  // 3. Selected Skins Queue (Multi-Hero SortSkin System)
-  const [selectedSkins, setSelectedSkins] = useState([])
+  // 3. Selected Skin Queue
+  const [selectedSkins, setSelectedSkins] = useState([]);
 
-  // Sync any catalog edits (name/tier/image) into currently selectedSkins
+  // Sync any catalog edits (name/image) into currently selectedSkins
   useEffect(() => {
     setSelectedSkins((prev) =>
       prev.map((item) => {
@@ -155,7 +151,7 @@ export function App() {
   const [savedPosters, setSavedPosters] = useState(() => {
     try {
       const raw = localStorage.getItem(SAVED_POSTERS_KEY);
-      return raw ? JSON.parse(raw).map((poster) => ({ ...poster, selectedSkins: [] })) : [];
+      return raw ? JSON.parse(raw).map((poster) => ({ ...poster, selectedSkins: [], accountInfo: { ...poster.accountInfo, skinCount: '0' } })) : [];
     } catch {
       return [];
     }
@@ -269,8 +265,10 @@ export function App() {
   };
 
   const handleImportCatalog = (importedHeroes) => {
-    setHeroes(importedHeroes);
-    if (importedHeroes[0]?.id) setActiveHeroId(importedHeroes[0].id);
+    const heroesWithoutSkins = importedHeroes.map((hero) => ({ ...hero, skins: [] }));
+    setHeroes(heroesWithoutSkins);
+    setSelectedSkins([]);
+    if (heroesWithoutSkins[0]?.id) setActiveHeroId(heroesWithoutSkins[0].id);
   };
 
   // Direct Inline Hero Image Upload in Step 1
