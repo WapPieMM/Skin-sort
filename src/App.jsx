@@ -375,8 +375,8 @@ export function App() {
       const imageUrl = await uploadImageFile(file, 'heroes');
       handleUpdateHero(activeHero.id, { image: imageUrl });
       notify(`อัปโหลดรูปภาพฮีโร่ ${activeHero.name} สำเร็จ!`);
-    } catch {
-      notify('ไม่สามารถอ่านไฟล์รูปภาพได้');
+    } catch (error) {
+      notify(error.message || 'ไม่สามารถอัปโหลดรูปภาพได้');
     }
     e.target.value = '';
   };
@@ -389,8 +389,8 @@ export function App() {
       const imageUrl = await uploadImageFile(file, 'skins');
       setQuickSkinImage(imageUrl);
       notify('เตรียมรูปสกินใหม่เรียบร้อย กดปุ่ม "+ เพิ่มสกิน" ได้เลย');
-    } catch {
-      notify('ไม่สามารถอ่านไฟล์รูปภาพสกินได้');
+    } catch (error) {
+      notify(error.message || 'ไม่สามารถอัปโหลดรูปภาพสกินได้');
     }
     e.target.value = '';
   };
