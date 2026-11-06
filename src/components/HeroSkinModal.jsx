@@ -117,7 +117,7 @@ export default function HeroSkinModal({
       }
     };
 
-    await Promise.all(Array.from({ length: Math.min(4, files.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(20, files.length) }, worker));
     if (failed) {
       flashStatus(`อัปโหลดสำเร็จ ${uploaded} รูป · ไม่สำเร็จ ${failed} รูป`);
     } else {
@@ -424,7 +424,7 @@ export default function HeroSkinModal({
                   onChange={(e) => setNewSkinImage(e.target.value)}
                 />
                 <label className="uploadLabelBtn">
-                  <ImageIcon size={14} /> อัปโหลดหลายรูป (สูงสุด 20 รูป/ครั้ง)
+                  <ImageIcon size={14} /> อัปโหลดหลายรูป (สูงสุด 20 รูปพร้อมกัน)
                   <input
                     type="file"
                     accept="image/*"
