@@ -2269,11 +2269,11 @@ footer span {
   .adminLoginCard { padding: 26px 22px; }
 }
 
-/* Pure Edge-to-Edge Seamless Skin Collage Canvas */
+/* Pure Edge-to-Edge Seamless Skin Collage Canvas (Wider Aspect Ratio) */
 .seamlessGridCanvas {
   display: grid;
   width: 100%;
-  max-width: 1160px;
+  max-width: 1360px;
   gap: 0;
   padding: 0;
   margin: 0;
@@ -2286,7 +2286,7 @@ footer span {
 
 .seamlessSkinTile {
   width: 100%;
-  aspect-ratio: 10 / 18;
+  aspect-ratio: 2 / 3;
   margin: 0;
   padding: 0;
   border: 0;
@@ -2304,25 +2304,276 @@ footer span {
   border: 0;
 }
 
-/* Step 3: Visual Drag-and-Drop Grid Arranger */
+/* Column Configurator (1 to 20 Columns + Smart Recommendations) */
+.columnConfiguratorBox {
+  background: #fdf8fc;
+  border: 1px solid #ead8e8;
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.columnConfiguratorBox.compactBox {
+  margin-bottom: 16px;
+}
+
+.colConfigTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.colPickerLabelGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.colPickerLabelGroup b {
+  font-size: 12.5px;
+  color: #6d4f72;
+}
+
+.colStepperControl {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e4cee2;
+  border-radius: 99px;
+  padding: 3px;
+  gap: 6px;
+}
+
+.colStepperControl button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f8ecf6;
+  color: #7c5478;
+  font-size: 16px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.colStepperControl button:disabled {
+  opacity: 0.35;
+}
+
+.colStepperControl span {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #8f5682;
+  min-width: 78px;
+  text-align: center;
+}
+
+.colRecommendBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.recBadgeLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a45e92;
+}
+
+.recChipsWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.recColBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fff;
+  border: 1px solid #e4c5de;
+  border-radius: 99px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  color: #78537c;
+  transition: all 0.15s ease;
+}
+
+.recColBtn b {
+  color: #9e5689;
+}
+
+.recColBtn small {
+  font-size: 10.5px;
+  color: #9b809e;
+}
+
+.recColBtn.active {
+  background: linear-gradient(120deg, #d99dc4, #b98cc7);
+  border-color: transparent;
+  color: #fff;
+}
+
+.recColBtn.active b,
+.recColBtn.active small {
+  color: #fff;
+}
+
+.allColsNumberRow {
+  display: grid;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.colNumBtn {
+  height: 32px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e9d7e7;
+  font-size: 12px;
+  font-weight: 600;
+  color: #755779;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.colNumBtn.recommended {
+  border-color: #d496c1;
+  background: #fff5fb;
+  color: #9e5388;
+  font-weight: 700;
+}
+
+.colNumBtn.active {
+  background: linear-gradient(120deg, #d99dc4, #b98cc7);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 3px 8px rgba(196, 138, 185, 0.35);
+}
+
+/* Mobile & Desktop Swap / Reorder Action Banner */
+.mobileSwapBanner {
+  border-radius: 16px;
+  padding: 11px 15px;
+  margin-bottom: 14px;
+  background: #faf2f8;
+  border: 1px solid #ead8e8;
+}
+
+.mobileSwapBanner.hasSelection {
+  background: linear-gradient(120deg, #fdf0f8, #f4ecfc);
+  border: 1.5px solid #cf8fbe;
+  box-shadow: 0 6px 18px rgba(194, 136, 182, 0.18);
+}
+
+.swapIdleHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #7f5e83;
+}
+
+.activeSwapControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.activeSwapTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+
+.swapBadge {
+  background: #bd74a8;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+}
+
+.activeSwapTitle small {
+  color: #8f6f93;
+  font-size: 11.5px;
+}
+
+.activeSwapBtns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.activeSwapBtns button {
+  background: #fff;
+  border: 1px solid #dfc5dc;
+  border-radius: 10px;
+  padding: 6px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #6f4e73;
+}
+
+.activeSwapBtns button:disabled {
+  opacity: 0.35;
+}
+
+.activeSwapBtns .dangerSwapBtn {
+  background: #fef0f4;
+  border-color: #f3c6d3;
+  color: #ba4f6e;
+}
+
+.activeSwapBtns .cancelSwapBtn {
+  background: #f3e8f1;
+  color: #7c5c80;
+}
+
+/* Step 3: Visual Drag-and-Drop & Tap-to-Swap Grid Arranger */
 .visualArrangeGrid {
   display: grid;
   gap: 0;
   border: 1px solid #ead8e8;
   overflow: hidden;
+  touch-action: pan-y;
 }
 
 .visualArrangeTile {
   position: relative;
   width: 100%;
-  aspect-ratio: 10 / 18;
+  aspect-ratio: 2 / 3;
   overflow: hidden;
-  cursor: grab;
+  cursor: pointer;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .visualArrangeTile.dragging {
   opacity: 0.45;
+}
+
+.visualArrangeTile.selectedForSwap {
+  outline: 3px solid #c968a8;
+  outline-offset: -3px;
+  z-index: 3;
 }
 
 .visualArrangeTile img {
@@ -2330,14 +2581,55 @@ footer span {
   height: 100%;
   object-fit: cover;
   display: block;
+  pointer-events: none;
+}
+
+.touchDragHandle {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(65, 40, 70, 0.76);
+  color: #fff;
+  padding: 3px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  touch-action: none;
+  cursor: grab;
+}
+
+.swapSelectedOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(188, 98, 158, 0.34);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 6px;
+  pointer-events: none;
+}
+
+.swapSelectedOverlay span {
+  background: rgba(94, 45, 84, 0.92);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 99px;
+  text-align: center;
 }
 
 .visualTileControls {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 5px;
+  right: 5px;
+  z-index: 4;
   display: flex;
-  gap: 4px;
+  gap: 3px;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -2350,7 +2642,7 @@ footer span {
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   color: #6b496e;
   font-size: 12px;
   font-weight: 700;
@@ -2365,33 +2657,6 @@ footer span {
 
 .visualTileControls .removeTileBtn {
   background: rgba(196, 77, 114, 0.92);
-  color: #fff;
-}
-
-.inlineColSelector {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: #faf1f8;
-  border: 1px solid #ead8e8;
-  border-radius: 99px;
-  padding: 4px 10px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #7c5b80;
-}
-
-.colChipBtn {
-  padding: 4px 9px;
-  border-radius: 99px;
-  background: transparent;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #7c5b80;
-}
-
-.colChipBtn.active {
-  background: linear-gradient(120deg, #d99dc4, #b98cc7);
   color: #fff;
 }
 
@@ -2412,4 +2677,23 @@ footer span {
   margin: 0;
   font-size: 13px;
 }
+
+@media (max-width: 960px) {
+  .allColsNumberRow {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .allColsNumberRow {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  .visualArrangeGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .visualTileControls {
+    opacity: 1;
+  }
+}
+
 

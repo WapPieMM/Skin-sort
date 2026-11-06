@@ -7,7 +7,7 @@ export default function PosterCanvas({
   heroesById,
   layout,
 }) {
-  const columns = layout?.columns || 10;
+  const columns = Math.max(1, Math.min(20, Number(layout?.columns) || 10));
 
   return (
     <div
