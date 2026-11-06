@@ -62,7 +62,7 @@ export default function HeroSkinModal({
         flashStatus(`อัปเดตรูปภาพฮีโร่ ${currentHero.name} เรียบร้อยแล้ว`);
       }
     } catch (err) {
-      flashStatus('ไม่สามารถอ่านไฟล์รูปภาพได้');
+      flashStatus(err.message || 'ไม่สามารถอัปโหลดรูปภาพได้');
     }
     e.target.value = '';
   };
@@ -79,7 +79,7 @@ export default function HeroSkinModal({
         setNewSkinImage(imageUrl);
       }
     } catch (err) {
-      flashStatus('ไม่สามารถอ่านไฟล์รูปภาพสกินได้');
+      flashStatus(err.message || 'ไม่สามารถอัปโหลดรูปภาพสกินได้');
     }
     e.target.value = '';
   };
