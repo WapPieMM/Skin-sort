@@ -32,6 +32,8 @@ export default function PosterCanvas({
             {displayImg && (
               <img
                 src={displayImg}
+                crossOrigin="anonymous"
+                decoding="sync"
                 alt=""
                 referrerPolicy="no-referrer"
                 draggable={false}
