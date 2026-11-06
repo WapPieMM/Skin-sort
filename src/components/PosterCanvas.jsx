@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  SKIN_TIERS,
-  POSTER_THEMES,
-  PASTEL_PALETTE,
-  getTierMeta,
-} from '../data/defaultCatalog';
+import { POSTER_THEMES, PASTEL_PALETTE } from '../data/defaultCatalog';
 
 export default function PosterCanvas({
   previewRef,
@@ -17,12 +12,6 @@ export default function PosterCanvas({
 }) {
   const theme =
     POSTER_THEMES.find((t) => t.id === layout.themeId) || POSTER_THEMES[0];
-
-  // Count selected skins by Tier in priority order
-  const tierCounts = SKIN_TIERS.map((tier) => {
-    const count = selectedSkins.filter((item) => item.tier === tier.id).length;
-    return { ...tier, count };
-  }).filter((t) => t.count > 0);
 
   // Build tiled watermark array if needed
   const tiledItems = Array.from({ length: 18 }, (_, i) => i);
@@ -166,30 +155,6 @@ export default function PosterCanvas({
         </div>
       )}
 
-      {/* Skin Tier Summary Bar (SortSkin signature feature) */}
-      {layout.showTierSummary && tierCounts.length > 0 && (
-        <div className="posterTierSummaryBar">
-          <span className="tierSummaryLabel">
-            ไฮไลต์สกินในป้าย ({selectedSkins.length} สกิน):
-          </span>
-          <div className="tierSummaryItems">
-            {tierCounts.map((tc) => (
-              <span
-                key={tc.id}
-                className="tierSummaryChip"
-                style={{
-                  background: tc.softBg,
-                  color: tc.textColor,
-                  borderColor: tc.borderColor,
-                }}
-              >
-                <i>{tc.gem}</i> {tc.shortLabel} <b className="tabular">×{tc.count}</b>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Main Skin Grid */}
       <div
         className={`posterSkinGrid shape-${layout.cardShape || 'portrait'}`}
@@ -199,7 +164,6 @@ export default function PosterCanvas({
       >
         {selectedSkins.map((item, idx) => {
           const heroObj = heroesById[item.heroId];
-          const tierMeta = getTierMeta(item.tier);
           const displayImg = item.image || heroObj?.image || '';
           const fallbackBg =
             heroObj?.color || PASTEL_PALETTE[idx % PASTEL_PALETTE.length];
@@ -208,7 +172,6 @@ export default function PosterCanvas({
             <div
               key={item.uid}
               className="posterSkinCard"
-              style={{ borderColor: tierMeta.borderColor }}
             >
               <div
                 className="posterSkinArt"
