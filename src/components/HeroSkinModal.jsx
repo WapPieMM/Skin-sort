@@ -88,6 +88,12 @@ export default function HeroSkinModal({
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
+    if (files.length > 20) {
+      flashStatus('อัปโหลดได้สูงสุดครั้งละ 20 รูป กรุณาเลือกใหม่อีกครั้ง');
+      e.target.value = '';
+      return;
+    }
+
     let uploaded = 0;
     let failed = 0;
     let nextIndex = 0;
@@ -418,7 +424,7 @@ export default function HeroSkinModal({
                   onChange={(e) => setNewSkinImage(e.target.value)}
                 />
                 <label className="uploadLabelBtn">
-                  <ImageIcon size={14} /> อัปโหลดหลายรูป
+                  <ImageIcon size={14} /> อัปโหลดหลายรูป (สูงสุด 20 รูป/ครั้ง)
                   <input
                     type="file"
                     accept="image/*"
