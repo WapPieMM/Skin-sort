@@ -31,6 +31,7 @@ import {
 import { compressImageFile } from './utils/imageHelper';
 import HeroSkinModal from './components/HeroSkinModal';
 import PosterCanvas from './components/PosterCanvas';
+import { loadCatalogFromIndexedDB, saveCatalogToIndexedDB } from './utils/catalogStorage';
 
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
 const CATALOG_SKIN_MIGRATION_KEY = 'rov_white_angel_catalog_skins_cleared_v1';
@@ -38,49 +39,88 @@ const SAVED_POSTERS_KEY = 'rov_white_angel_saved_posters_v2';
 
 export function App() {
   // 1. Hero & Skin Catalog State (Persisted in localStorage)
-  const [heroes, setHeroes] = useState(() => {
-    try {
-      // Clear skins from the pre-tier catalog only once. After migration, keep
-      // newly uploaded skins when the app is reopened or refreshed.
-      const shouldClearLegacySkins =
-        localStorage.getItem(CATALOG_SKIN_MIGRATION_KEY) !== 'done';
-      const saved = localStorage.getItem(CATALOG_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const savedIds = new Set(parsed.map((hero) => hero.id));
-          const newlyAddedDefaults = DEFAULT_HEROES.filter(
-            (hero) => !savedIds.has(hero.id)
-          );
-          const migratedHeroes = parsed.map((hero) => ({
-            ...hero,
-            skins: shouldClearLegacySkins
-              ? []
-              : Array.isArray(hero.skins)
-                ? hero.skins
-                : [],
-          }));
-          localStorage.setItem(CATALOG_SKIN_MIGRATION_KEY, 'done');
-          return [
-            ...migratedHeroes,
-            ...newlyAddedDefaults.map((hero) => ({ ...hero, skins: [] })),
-          ];
-        }
-      }
-      localStorage.setItem(CATALOG_SKIN_MIGRATION_KEY, 'done');
-    } catch {
-      // Fallback to default
-    }
-    return DEFAULT_HEROES.map((hero) => ({ ...hero, skins: [] }));
-  });
+  const [heroes, setHeroes] = useState(() =>
+    DEFAULT_HEROES.map((hero) => ({ ...hero, skins: [] }))
+  );
+  const [isCatalogLoaded, setIsCatalogLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(heroes));
-    } catch {
-      // Ignore quota exceeded if huge data
-    }
-  }, [heroes]);
+    let cancelled = false;
+
+    const loadCatalog = async () => {
+      try {
+        // IndexedDB supports much larger image collections than localStorage.
+        const indexedCatalog = await loadCatalogFromIndexedDB();
+        if (Array.isArray(indexedCatalog) && indexedCatalog.length > 0) {
+          if (!cancelled) setHeroes(indexedCatalog);
+          return;
+        }
+
+        // Migrate the existing localStorage catalog once.
+        let parsed = [];
+        try {
+          const saved = localStorage.getItem(CATALOG_STORAGE_KEY);
+          parsed = saved ? JSON.parse(saved) : [];
+        } catch {
+          parsed = [];
+        }
+
+        const shouldClearLegacySkins =
+          localStorage.getItem(CATALOG_SKIN_MIGRATION_KEY) !== 'done';
+        const source = Array.isArray(parsed) && parsed.length
+          ? parsed
+          : DEFAULT_HEROES;
+        const savedIds = new Set(source.map((hero) => hero.id));
+        const newlyAddedDefaults = DEFAULT_HEROES.filter(
+          (hero) => !savedIds.has(hero.id)
+        );
+        const migratedHeroes = source.map((hero) => ({
+          ...hero,
+          skins: shouldClearLegacySkins
+            ? []
+            : Array.isArray(hero.skins)
+              ? hero.skins
+              : [],
+        }));
+        const nextCatalog = [
+          ...migratedHeroes,
+          ...newlyAddedDefaults.map((hero) => ({ ...hero, skins: [] })),
+        ];
+
+        await saveCatalogToIndexedDB(nextCatalog);
+        localStorage.setItem(CATALOG_SKIN_MIGRATION_KEY, 'done');
+        if (!cancelled) setHeroes(nextCatalog);
+      } catch (error) {
+        // Retain compatibility with the old catalog if IndexedDB is unavailable.
+        try {
+          const saved = localStorage.getItem(CATALOG_STORAGE_KEY);
+          const parsed = saved ? JSON.parse(saved) : null;
+          if (!cancelled && Array.isArray(parsed) && parsed.length) {
+            setHeroes(parsed);
+          }
+        } catch {
+          // Start with the default catalog.
+        }
+        if (!cancelled) {
+          notify('เปิดพื้นที่จัดเก็บรูปภาพไม่สำเร็จ กรุณาลองใช้เบราว์เซอร์อื่น');
+        }
+      } finally {
+        if (!cancelled) setIsCatalogLoaded(true);
+      }
+    };
+
+    loadCatalog();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isCatalogLoaded) return;
+    saveCatalogToIndexedDB(heroes).catch(() => {
+      notify('บันทึกข้อมูลไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม กรุณาสำรองข้อมูล JSON');
+    });
+  }, [heroes, isCatalogLoaded]);
 
   const heroesById = useMemo(() => {
     const map = {};
