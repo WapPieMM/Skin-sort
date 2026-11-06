@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AdminLogin from './components/AdminLogin';
-import { toBlob } from 'html-to-image';
 import {
   Heart,
   Sparkles,
@@ -739,46 +738,95 @@ export function App() {
     return list;
   }, [heroes, activeHero, showAllHeroesSkins, skinQuery]);
 
-  // Download Pure Collage PNG (iOS Share Sheet + standard browser download)
+  // Render the collage directly to a pixel-aligned canvas. DOM-to-image
+  // libraries can leave fractional-pixel hairline gaps between CSS grid tiles.
   const handleDownloadPng = async () => {
     if (!previewRef.current) return;
     setIsExporting(true);
     try {
-      // Safari can begin DOM-to-image conversion before remote skin images
-      // have finished decoding. Wait for every preview image before capture.
-      const previewImages = Array.from(
-        previewRef.current.querySelectorAll('img')
-      );
-      await Promise.all(
-        previewImages.map(async (img) => {
-          if (!img.complete) {
-            await new Promise((resolve, reject) => {
-              img.addEventListener('load', resolve, { once: true });
-              img.addEventListener(
-                'error',
-                () => reject(new Error('โหลดรูปสกินบางรูปไม่สำเร็จ')),
-                { once: true }
-              );
-            });
-          }
-          if (!img.naturalWidth || !img.naturalHeight) {
-            throw new Error('โหลดรูปสกินบางรูปไม่สำเร็จ');
-          }
-          if (typeof img.decode === 'function') await img.decode();
-        })
-      );
+      const preview = previewRef.current;
+      const previewRect = preview.getBoundingClientRect();
+      const pixelRatio = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(previewRect.width * pixelRatio));
+      canvas.height = Math.max(1, Math.round(previewRect.height * pixelRatio));
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('ไม่สามารถเตรียมพื้นที่สร้างภาพได้');
 
-      const blob = await toBlob(previewRef.current, {
-        pixelRatio: 2,
-        cacheBust: true,
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      const tiles = Array.from(preview.querySelectorAll('.seamlessSkinTile'));
+
+      for (const tile of tiles) {
+        const tileRect = tile.getBoundingClientRect();
+        const left = Math.round((tileRect.left - previewRect.left) * pixelRatio);
+        const top = Math.round((tileRect.top - previewRect.top) * pixelRatio);
+        const right = Math.round((tileRect.right - previewRect.left) * pixelRatio);
+        const bottom = Math.round((tileRect.bottom - previewRect.top) * pixelRatio);
+        const width = Math.max(1, right - left);
+        const height = Math.max(1, bottom - top);
+        const background = getComputedStyle(tile).backgroundColor;
+
+        context.fillStyle = background && background !== 'rgba(0, 0, 0, 0)'
+          ? background
+          : '#ffffff';
+        context.fillRect(left, top, width, height);
+
+        const img = tile.querySelector('img');
+        if (!img) continue;
+        if (!img.complete) {
+          await new Promise((resolve, reject) => {
+            img.addEventListener('load', resolve, { once: true });
+            img.addEventListener(
+              'error',
+              () => reject(new Error('โหลดรูปสกินบางรูปไม่สำเร็จ')),
+              { once: true }
+            );
+          });
+        }
+        if (!img.naturalWidth || !img.naturalHeight) {
+          throw new Error('โหลดรูปสกินบางรูปไม่สำเร็จ');
+        }
+        if (typeof img.decode === 'function') await img.decode();
+
+        // Match CSS object-fit: cover, using the same integer tile bounds
+        // for adjacent cells so no fractional CSS pixels can become gaps.
+        const sourceRatio = img.naturalWidth / img.naturalHeight;
+        const targetRatio = width / height;
+        let sourceX = 0;
+        let sourceY = 0;
+        let sourceWidth = img.naturalWidth;
+        let sourceHeight = img.naturalHeight;
+
+        if (sourceRatio > targetRatio) {
+          sourceWidth = img.naturalHeight * targetRatio;
+          sourceX = (img.naturalWidth - sourceWidth) / 2;
+        } else {
+          sourceHeight = img.naturalWidth / targetRatio;
+          sourceY = (img.naturalHeight - sourceHeight) / 2;
+        }
+
+        context.drawImage(
+          img,
+          sourceX,
+          sourceY,
+          sourceWidth,
+          sourceHeight,
+          left,
+          top,
+          width,
+          height
+        );
+      }
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
       });
       if (!blob) throw new Error('ไม่สามารถสร้างไฟล์ PNG ได้');
 
       const filename = `rov-skin-collection-${selectedSkins.length}skins-${layout.columns}cols.png`;
       const file = new File([blob], filename, { type: 'image/png' });
 
-      // Safari on iPhone/iPad supports saving a generated image through the
-      // native share sheet more reliably than downloading a data URL.
       if (
         typeof navigator !== 'undefined' &&
         typeof navigator.share === 'function' &&
@@ -786,33 +834,27 @@ export function App() {
         navigator.canShare({ files: [file] })
       ) {
         try {
-          await navigator.share({
-            files: [file],
-            title: 'RoV Skin Collection',
-          });
+          await navigator.share({ files: [file], title: 'RoV Skin Collection' });
           notify('ส่งภาพไปยังเมนูแชร์เรียบร้อยแล้ว เลือก Save Image เพื่อบันทึก');
           return;
         } catch (shareError) {
-          // The user closing the share sheet is not a download failure.
           if (shareError?.name === 'AbortError') return;
-          // Fall through to the regular file download for unsupported cases.
         }
       }
 
       const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      // Keep the object URL alive briefly so Safari has time to consume it.
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
       notify('สร้างไฟล์ PNG แล้ว หากไม่เริ่มดาวน์โหลด กรุณาเปิดไฟล์จากรายการดาวน์โหลด');
     } catch (error) {
       console.error('PNG export failed:', error);
-      notify('เกิดข้อผิดพลาดในการสร้างไฟล์ภาพ กรุณาลองอีกครั้ง');
+      notify(error.message || 'เกิดข้อผิดพลาดในการสร้างไฟล์ภาพ กรุณาลองอีกครั้ง');
     } finally {
       setIsExporting(false);
     }
