@@ -30,6 +30,7 @@ import {
   PASTEL_PALETTE,
 } from './data/defaultCatalog';
 import { compressImageFile } from './utils/imageHelper';
+import { uploadImageFile } from './utils/cloudStorage';
 import HeroSkinModal from './components/HeroSkinModal';
 import PosterCanvas from './components/PosterCanvas';
 import { loadCatalogFromIndexedDB, saveCatalogToIndexedDB } from './utils/catalogStorage';
@@ -372,8 +373,8 @@ export function App() {
     const file = e.target.files?.[0];
     if (!file || !activeHero) return;
     try {
-      const dataUrl = await compressImageFile(file, 440, 0.88);
-      handleUpdateHero(activeHero.id, { image: dataUrl });
+      const imageUrl = await uploadImageFile(file, 'heroes');
+      handleUpdateHero(activeHero.id, { image: imageUrl });
       notify(`อัปโหลดรูปภาพฮีโร่ ${activeHero.name} สำเร็จ!`);
     } catch {
       notify('ไม่สามารถอ่านไฟล์รูปภาพได้');
@@ -386,8 +387,8 @@ export function App() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await compressImageFile(file, 460, 0.88);
-      setQuickSkinImage(dataUrl);
+      const imageUrl = await uploadImageFile(file, 'skins');
+      setQuickSkinImage(imageUrl);
       notify('เตรียมรูปสกินใหม่เรียบร้อย กดปุ่ม "+ เพิ่มสกิน" ได้เลย');
     } catch {
       notify('ไม่สามารถอ่านไฟล์รูปภาพสกินได้');
@@ -1600,7 +1601,7 @@ export function App() {
                             onChange={async (e) => {
                               const f = e.target.files?.[0];
                               if (!f) return;
-                              const url = await compressImageFile(f, 240, 0.9);
+                              const url = await uploadImageFile(f, 'branding');
                               setWatermark((w) => ({ ...w, logo: url }));
                               e.target.value = '';
                             }}
