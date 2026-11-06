@@ -77,7 +77,13 @@ export function App() {
       const saved = localStorage.getItem(CATALOG_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const savedIds = new Set(parsed.map((hero) => hero.id));
+          const newlyAddedDefaults = DEFAULT_HEROES.filter(
+            (hero) => !savedIds.has(hero.id)
+          );
+          return [...parsed, ...newlyAddedDefaults];
+        }
       }
     } catch {
       // Fallback to default
