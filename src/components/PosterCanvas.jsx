@@ -197,16 +197,6 @@ export default function PosterCanvas({
                   <span className="posterOrderNum tabular">#{idx + 1}</span>
                 )}
 
-                {/* Skin Tier Ribbon Badge */}
-                {layout.showTierBadge && (
-                  <span
-                    className="posterTierBadge"
-                    style={{ background: tierMeta.gradient }}
-                  >
-                    {tierMeta.gem} {tierMeta.shortLabel}
-                  </span>
-                )}
-
                 {/* Bottom Scrim & Caption */}
                 <div className="posterCardCaption">
                   <b>{item.name}</b>
