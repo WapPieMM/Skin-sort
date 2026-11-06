@@ -13,7 +13,7 @@ import {
   FileUp,
 } from 'lucide-react';
 import { HERO_ROLES, PASTEL_PALETTE } from '../data/defaultCatalog';
-import { compressImageFile } from '../utils/imageHelper';
+import { uploadImageFile } from '../utils/cloudStorage';
 
 export default function HeroSkinModal({
   isOpen,
@@ -54,11 +54,11 @@ export default function HeroSkinModal({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await compressImageFile(file, 420, 0.88);
+      const imageUrl = await uploadImageFile(file, 'heroes');
       if (target === 'new') {
-        setNewHeroImage(dataUrl);
+        setNewHeroImage(imageUrl);
       } else {
-        onUpdateHero(currentHero.id, { image: dataUrl });
+        onUpdateHero(currentHero.id, { image: imageUrl });
         flashStatus(`อัปเดตรูปภาพฮีโร่ ${currentHero.name} เรียบร้อยแล้ว`);
       }
     } catch (err) {
@@ -71,12 +71,12 @@ export default function HeroSkinModal({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await compressImageFile(file, 460, 0.88);
+      const imageUrl = await uploadImageFile(file, 'skins');
       if (skinId) {
-        onUpdateSkin(currentHero.id, skinId, { image: dataUrl });
+        onUpdateSkin(currentHero.id, skinId, { image: imageUrl });
         flashStatus('อัปเดตรูปภาพสกินเรียบร้อยแล้ว');
       } else {
-        setNewSkinImage(dataUrl);
+        setNewSkinImage(imageUrl);
       }
     } catch (err) {
       flashStatus('ไม่สามารถอ่านไฟล์รูปภาพสกินได้');
@@ -90,21 +90,28 @@ export default function HeroSkinModal({
 
     let uploaded = 0;
     let failed = 0;
-    for (const file of files) {
-      try {
-        const image = await compressImageFile(file, 460, 0.88);
-        const name = file.name
-          .replace(/\.[^.]+$/, '')
-          .replace(/[_-]+/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim() || `Skin ${currentHero.skins.length + uploaded + 1}`;
-        onAddSkin(currentHero.id, { name, image });
-        uploaded += 1;
-      } catch (err) {
-        failed += 1;
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < files.length) {
+        const index = nextIndex++;
+        const file = files[index];
+        try {
+          const image = await uploadImageFile(file, 'skins');
+          const name = file.name
+            .replace(/\.[^.]+$/, '')
+            .replace(/[_-]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim() || `Skin ${currentHero.skins.length + uploaded + 1}`;
+          onAddSkin(currentHero.id, { name, image });
+          uploaded += 1;
+        } catch (err) {
+          failed += 1;
+        }
+        setStatusMsg(`กำลังอัปโหลด ${uploaded + failed}/${files.length} รูป...`);
       }
-    }
+    };
 
+    await Promise.all(Array.from({ length: Math.min(4, files.length) }, worker));
     if (failed) {
       flashStatus(`อัปโหลดสำเร็จ ${uploaded} รูป · ไม่สำเร็จ ${failed} รูป`);
     } else {
