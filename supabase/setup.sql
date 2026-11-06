@@ -23,3 +23,14 @@ on conflict (id) do update set
 
 -- No anonymous INSERT, UPDATE, or DELETE policy is created.
 -- Only the server-side service-role key may create signed upload URLs.
+
+
+-- Shared hero/skin catalog. The API accesses this table with the server-only
+-- Supabase service-role key; no public table policies are created.
+create table if not exists public.skin_catalog (
+  id integer primary key check (id = 1),
+  catalog jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.skin_catalog enable row level security;
