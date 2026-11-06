@@ -340,13 +340,22 @@ export function App() {
   const [heroQuery, setHeroQuery] = useState('');
   const [skinQuery, setSkinQuery] = useState('');
   const [showAllHeroesSkins, setShowAllHeroesSkins] = useState(false);
+  // Null = show Hero Categories list; Hero ID = drilled into that Hero's skins
+  const [pickerHeroId, setPickerHeroId] = useState(null);
+  const [isMobilePickerCollapsed, setIsMobilePickerCollapsed] = useState(false);
+  const [hideBoardBadges, setHideBoardBadges] = useState(false);
+
+  const pickerHero = useMemo(
+    () => (pickerHeroId ? heroesById[pickerHeroId] || null : null),
+    [pickerHeroId, heroesById]
+  );
 
   const [quickSkinName, setQuickSkinName] = useState('');
   const [quickSkinImage, setQuickSkinImage] = useState('');
 
   // 5. Grid Layout State (1 to 20 columns, odd or even)
   const [layout, setLayout] = useState({
-    columns: 10,
+    columns: 6,
   });
 
   // Smart Column Recommendations based on selectedSkins.length
@@ -1314,623 +1323,658 @@ export function App() {
         )}
 
         {/* ============================================================
-            STEP 2: SORTSKIN-STYLE UNIFIED WORKSPACE
-            (1) Select skins & duplicates repeatedly
-            (2) Reorder skins directly in place (Tap-to-swap / Drag / Arrows)
-            (3) Live Seamless Collage Preview & Direct High-Res PNG Export
+            STEP 2: SORTSKIN-STYLE 2-PANE WORKSPACE
+            - Left Pane: Hero Categories (Click a Hero to expand its skins inside the compact drawer)
+            - Right Pane: Unified Live Preview & Reorder Board ("ตารางของคุณ N สกิน")
+              Always visible on mobile without scrolling past hundreds of skins!
            ============================================================ */}
         {step === 2 && (
-          <div className="panel">
-            <div className="panelTopRow">
-              <div>
-                <h3>
-                  Step 2 · เลือกสกิน (กดซ้ำเพื่อเพิ่มรูปเดิมได้) · ปรับลำดับ & พรีวิวทันที{' '}
-                  <Sparkles size={15} />
-                </h3>
-                <p className="muted">
-                  คลิกที่รูปสกินเพื่อเพิ่มเข้าตาราง (กดซ้ำที่สกินเดิมเพื่อใส่รูปซ้ำกี่รูปก็ได้) พร้อมเลื่อนปรับลำดับและดูพรีวิวด้านล่างได้เลย
-                </p>
-              </div>
-
-              <div className="step2ModeToggle">
-                <button
-                  className={
-                    'filterTab ' + (!showAllHeroesSkins ? 'active' : '')
-                  }
-                  onClick={() => setShowAllHeroesSkins(false)}
-                >
-                  เฉพาะฮีโร่ {activeHero?.name} ({activeHero?.skins.length})
-                </button>
-                <button
-                  className={
-                    'filterTab ' + (showAllHeroesSkins ? 'active' : '')
-                  }
-                  onClick={() => setShowAllHeroesSkins(true)}
-                >
-                  รวมสกินทุกฮีโร่ทั้งหมด
-                </button>
-              </div>
-            </div>
-
-            <div className="heroQuickStrip">
-              {heroes.map((h, i) => {
-                const count = selectedSkins.filter(
-                  (s) => s.heroId === h.id
-                ).length;
-                return (
+          <div className="panel sortskinWorkspacePanel">
+            <div className="sortskinTwoPaneLayout">
+              {/* ==================================================
+                  LEFT SIDEBAR: HERO CATEGORIES & NESTED SKIN DRAWER
+                 ================================================== */}
+              <aside
+                className={
+                  'sortskinSidebar ' +
+                  (isMobilePickerCollapsed ? 'collapsedMobile' : '')
+                }
+              >
+                {/* Top Header Bar: "ฮีโร่ 125" + Upload + Mobile Collapse Toggle */}
+                <div className="sortskinSidebarTabs">
                   <button
-                    key={h.id}
-                    className={
-                      'heroStripChip ' +
-                      (!showAllHeroesSkins && activeHero?.id === h.id
-                        ? 'active'
-                        : '')
-                    }
+                    type="button"
+                    className="sortskinTabBtn active"
                     onClick={() => {
-                      setActiveHeroId(h.id);
-                      setShowAllHeroesSkins(false);
+                      setPickerHeroId(null);
+                      setSkinQuery('');
+                      setIsMobilePickerCollapsed(false);
                     }}
                   >
-                    <span
-                      className="chipDot"
-                      style={{
-                        background:
-                          h.color || PASTEL_PALETTE[i % PASTEL_PALETTE.length],
-                      }}
-                    >
-                      {h.image ? (
-                        <img
-                          src={h.image}
-                          alt={h.name}
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        h.name.slice(0, 1)
-                      )}
-                    </span>
-                    <span>{h.name}</span>
-                    {count > 0 && <b className="tabular">{count}</b>}
+                    <span>ฮีโร่</span>
+                    <small className="tabular">{heroes.length}</small>
                   </button>
-                );
-              })}
-            </div>
 
-            <div className="filterBarRow">
-              <div className="search flex1">
-                <Search size={17} />
-                <input
-                  placeholder="ค้นหาชื่อสกิน หรือชื่อฮีโร่..."
-                  value={skinQuery}
-                  onChange={(e) => setSkinQuery(e.target.value)}
-                />
-              </div>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setIsManagerOpen(true)}
-              >
-                <Upload size={14} /> เพิ่ม/จัดการรูปสกิน
-              </button>
-            </div>
-
-            {displayedSkinEntries.length === 0 ? (
-              <div className="emptySkinState">
-                <p>ยังไม่มีรูปสกินในหมวดที่เลือก สามารถอัปโหลดรูปสกินเพิ่มได้เลย</p>
-                <button
-                  className="primary"
-                  onClick={() => setIsManagerOpen(true)}
-                >
-                  <Upload size={15} /> อัปโหลดรูปสกินเข้าคลัง
-                </button>
-              </div>
-            ) : (
-              <div className="skinGrid">
-                {displayedSkinEntries.map(({ hero: h, skin: s }, i) => {
-                  const selectedCount = getSkinSelectedCount(h.id, s.id);
-                  const chosen = selectedCount > 0;
-                  const displayImg = s.image || h.image || '';
-
-                  return (
-                    <div
-                      key={`${h.id}-${s.id}`}
-                      className={'skinTile ' + (chosen ? 'chosen' : '')}
-                      onClick={() => addSkinSelection(h, s)}
-                      title="คลิกเพื่อเพิ่มสกินนี้เข้าตาราง (กดซ้ำเพื่อเพิ่มรูปเดิมได้)"
-                    >
-                      <div
-                        className="skinArt"
-                        style={{
-                          background:
-                            h.color ||
-                            PASTEL_PALETTE[(i + 1) % PASTEL_PALETTE.length],
-                        }}
-                      >
-                        {displayImg ? (
-                          <img
-                            src={displayImg}
-                            alt={s.name}
-                            className="tileHeroImg"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <span>
-                            {s.name
-                              .split(' ')
-                              .map((w) => w[0])
-                              .join('')
-                              .slice(0, 3)}
-                          </span>
-                        )}
-
-                        {chosen && (
-                          <b className="skinCountBadge tabular">
-                            ×{selectedCount}
-                          </b>
-                        )}
-
-                        <div
-                          className="skinTileQtyBar"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {chosen && (
-                            <button
-                              type="button"
-                              className="qtyMinusBtn"
-                              onClick={() => removeOneSkinInstance(h.id, s.id)}
-                              title="ลดจำนวนลง 1 รูป"
-                            >
-                              −
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="qtyPlusBtn"
-                            onClick={() => addSkinSelection(h, s)}
-                            title="เพิ่มสกินนี้อีก 1 รูป"
-                          >
-                            + เพิ่ม{chosen ? 'ซ้ำ' : ''}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="skinTileMeta">
-                        <b>{s.name}</b>
-                        <small>{h.name}</small>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* ============================================================
-                INTEGRATED SORTSKIN LIVE STUDIO ON STEP 2:
-                - Column Count Selector (1-20 + Smart Recommendations)
-                - Interactive Reorder Queue (Drag / Tap-to-Swap / Arrows / Duplicate)
-                - Live Seamless Collage Preview & Direct PNG Download
-               ============================================================ */}
-            <div className="step2LiveStudioSection">
-              <div className="step2StudioHeader">
-                <div>
-                  <span className="eyebrow">
-                    LIVE REORDER & SEAMLESS PREVIEW
-                  </span>
-                  <h3>
-                    จัดเรียงลำดับ & พรีวิวตารางคอลเลกชัน ({selectedSkins.length}{' '}
-                    รูป) <Sparkles size={15} />
-                  </h3>
-                  <p className="muted">
-                    เลื่อนสลับลำดับรูปสกิน ปรับจำนวนรูปต่อแถว (1–20 รูป) และกดดาวน์โหลดภาพ PNG ได้จากหน้านี้ทันที
-                  </p>
-                </div>
-
-                <div className="autoSortToolbar">
-                  <button
-                    type="button"
-                    className="sortActionBtn"
-                    onClick={sortSkinsByHero}
-                    disabled={!selectedSkins.length}
-                  >
-                    <Layers size={14} /> เรียงตามฮีโร่ (A → Z)
-                  </button>
-                  <button
-                    type="button"
-                    className="sortActionBtn"
-                    onClick={reverseSkinsOrder}
-                    disabled={!selectedSkins.length}
-                  >
-                    สลับหน้า-หลัง
-                  </button>
-                  {selectedSkins.length > 0 && (
+                  <div className="sortskinSidebarRightActions">
                     <button
                       type="button"
-                      className="sortActionBtn dangerOutlineBtn"
-                      onClick={clearAllSelectedSkins}
+                      className="sortskinMiniUploadBtn"
+                      onClick={() => setIsManagerOpen(true)}
+                      title="เพิ่มหรือแก้ไขรูปภาพสกินในคลัง"
                     >
-                      <Trash2 size={13} /> ล้างทั้งหมด
+                      <Upload size={12} /> จัดการคลังรูป
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="primary"
-                    onClick={handleDownloadPng}
-                    disabled={isExporting || !selectedSkins.length}
-                  >
-                    <Download size={15} />{' '}
-                    {isExporting ? 'กำลังสร้างไฟล์ภาพ...' : 'ดาวน์โหลด PNG'}
-                  </button>
-                </div>
-              </div>
 
-              {/* Column Selector (1 to 20, Odd & Even) + Smart Recommendations */}
-              <div className="columnConfiguratorBox">
-                <div className="colConfigTopRow">
-                  <div className="colPickerLabelGroup">
-                    <b>จำนวนรูปต่อแถว (1–20 รูป เลือกเลขคี่/เลขคู่ได้):</b>
-                    <div className="colStepperControl">
+                    <button
+                      type="button"
+                      className="mobileCollapseToggleBtn"
+                      onClick={() =>
+                        setIsMobilePickerCollapsed((prev) => !prev)
+                      }
+                    >
+                      {isMobilePickerCollapsed
+                        ? 'เลือกสกินเพิ่ม ▼'
+                        : 'ย่อหมวดฮีโร่ ▲'}
+                    </button>
+                  </div>
+                </div>
+
+                {!isMobilePickerCollapsed && (
+                  <div className="sortskinSidebarBody">
+                    {!pickerHero ? (
+                      /* VIEW 1: HERO CATEGORY LIST (Skins tucked inside each Hero) */
+                      <>
+                        <div className="sortskinSearchBox">
+                          <Search size={15} />
+                          <input
+                            placeholder="ค้นหาฮีโร่..."
+                            value={heroQuery}
+                            onChange={(e) => setHeroQuery(e.target.value)}
+                          />
+                          {heroQuery && (
+                            <button
+                              type="button"
+                              className="clearSearchInlineBtn"
+                              onClick={() => setHeroQuery('')}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="sortskinHeroList">
+                          {filteredHeroes.map((h, i) => {
+                            const selectedCountForHero = selectedSkins.filter(
+                              (item) => item.heroId === h.id
+                            ).length;
+                            const totalSkinsForHero = h.skins?.length || 0;
+                            const previewImg =
+                              h.image || h.skins?.[0]?.image || '';
+
+                            return (
+                              <button
+                                type="button"
+                                key={h.id}
+                                className={
+                                  'sortskinHeroRow ' +
+                                  (selectedCountForHero > 0 ? 'hasPicked' : '')
+                                }
+                                onClick={() => {
+                                  setPickerHeroId(h.id);
+                                  setActiveHeroId(h.id);
+                                  setSkinQuery('');
+                                }}
+                              >
+                                <div
+                                  className="sortskinHeroAvatar"
+                                  style={{
+                                    background:
+                                      h.color ||
+                                      PASTEL_PALETTE[i % PASTEL_PALETTE.length],
+                                  }}
+                                >
+                                  {previewImg ? (
+                                    <img
+                                      src={previewImg}
+                                      alt={h.name}
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  ) : (
+                                    <span>{h.name.slice(0, 1)}</span>
+                                  )}
+                                  {selectedCountForHero > 0 && (
+                                    <i className="heroActiveDot" />
+                                  )}
+                                </div>
+
+                                <div className="sortskinHeroMeta">
+                                  <b>{h.name}</b>
+                                  <small className="tabular">
+                                    {selectedCountForHero > 0 ? (
+                                      <>
+                                        <strong>{selectedCountForHero}</strong>/
+                                        {totalSkinsForHero} สกิน
+                                      </>
+                                    ) : (
+                                      <>{totalSkinsForHero} สกิน</>
+                                    )}
+                                  </small>
+                                </div>
+
+                                <span className="sortskinChevron">›</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : (
+                      /* VIEW 2: NESTED SKINS INSIDE SELECTED HERO CATEGORY */
+                      <>
+                        <div className="sortskinDrawerBackBar">
+                          <button
+                            type="button"
+                            className="backToHeroesBtn"
+                            onClick={() => {
+                              setPickerHeroId(null);
+                              setSkinQuery('');
+                            }}
+                          >
+                            ‹ หมวดฮีโร่
+                          </button>
+
+                          <div className="drawerHeroTitle">
+                            <b>{pickerHero.name}</b>
+                            <small className="tabular">
+                              เลือกแล้ว{' '}
+                              {
+                                selectedSkins.filter(
+                                  (s) => s.heroId === pickerHero.id
+                                ).length
+                              }
+                              /{pickerHero.skins?.length || 0} สกิน
+                            </small>
+                          </div>
+
+                          {pickerHero.skins?.length > 0 && (
+                            <button
+                              type="button"
+                              className="selectAllHeroSkinsBtn"
+                              onClick={() => {
+                                pickerHero.skins.forEach((sk) =>
+                                  addSkinSelection(pickerHero, sk)
+                                );
+                                notify(
+                                  `เพิ่มสกินทั้งหมดของ ${pickerHero.name} เข้าตารางแล้ว`
+                                );
+                              }}
+                            >
+                              + เลือกทั้งหมด
+                            </button>
+                          )}
+                        </div>
+
+                        {pickerHero.skins?.length > 4 && (
+                          <div className="sortskinSearchBox compactSearch">
+                            <Search size={14} />
+                            <input
+                              placeholder={`ค้นหาสกินของ ${pickerHero.name}...`}
+                              value={skinQuery}
+                              onChange={(e) => setSkinQuery(e.target.value)}
+                            />
+                          </div>
+                        )}
+
+                        {!pickerHero.skins || pickerHero.skins.length === 0 ? (
+                          <div className="nestedEmptySkinBox">
+                            <p>ยังไม่มีรูปสกินของ {pickerHero.name}</p>
+                            <button
+                              type="button"
+                              className="primary"
+                              onClick={() => {
+                                setActiveHeroId(pickerHero.id);
+                                setIsManagerOpen(true);
+                              }}
+                            >
+                              <Upload size={14} /> อัปโหลดรูปสกิน{' '}
+                              {pickerHero.name}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="sortskinNestedSkinGrid">
+                            {pickerHero.skins
+                              .filter((s) =>
+                                s.name
+                                  .toLowerCase()
+                                  .includes(skinQuery.toLowerCase())
+                              )
+                              .map((s, idx) => {
+                                const selectedCount = getSkinSelectedCount(
+                                  pickerHero.id,
+                                  s.id
+                                );
+                                const chosen = selectedCount > 0;
+                                const displayImg =
+                                  s.image || pickerHero.image || '';
+
+                                return (
+                                  <div
+                                    key={s.id}
+                                    className={
+                                      'nestedSkinCard ' +
+                                      (chosen ? 'chosen' : '')
+                                    }
+                                    onClick={() =>
+                                      addSkinSelection(pickerHero, s)
+                                    }
+                                    title="แตะเพื่อเพิ่มสกินเข้าตาราง (แตะซ้ำเพื่อเพิ่มรูปเดิมซ้ำได้)"
+                                  >
+                                    <div
+                                      className="nestedSkinArt"
+                                      style={{
+                                        background:
+                                          pickerHero.color ||
+                                          PASTEL_PALETTE[
+                                            idx % PASTEL_PALETTE.length
+                                          ],
+                                      }}
+                                    >
+                                      {displayImg ? (
+                                        <img
+                                          src={displayImg}
+                                          alt={s.name}
+                                          referrerPolicy="no-referrer"
+                                        />
+                                      ) : (
+                                        <span>{s.name.slice(0, 2)}</span>
+                                      )}
+
+                                      {chosen && (
+                                        <b className="skinCountBadge tabular">
+                                          ×{selectedCount}
+                                        </b>
+                                      )}
+
+                                      <div
+                                        className="skinTileQtyBar"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {chosen && (
+                                          <button
+                                            type="button"
+                                            className="qtyMinusBtn"
+                                            onClick={() =>
+                                              removeOneSkinInstance(
+                                                pickerHero.id,
+                                                s.id
+                                              )
+                                            }
+                                            title="ลดจำนวนลง 1 รูป"
+                                          >
+                                            −
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className="qtyPlusBtn"
+                                          onClick={() =>
+                                            addSkinSelection(pickerHero, s)
+                                          }
+                                          title="เพิ่มสกินนี้อีก 1 รูป"
+                                        >
+                                          +{chosen ? 'ซ้ำ' : 'เลือก'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="nestedSkinName">
+                                      <b>{s.name}</b>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </aside>
+
+              {/* ==================================================
+                  RIGHT MAIN BOARD: LIVE PREVIEW & REORDER TABLE
+                  ("ตารางของคุณ N สกิน" — matches reference image)
+                 ================================================== */}
+              <div className="sortskinMainBoard">
+                {/* Top Toolbar matching reference screenshot */}
+                <div className="sortskinBoardToolbar">
+                  <div className="boardTitleGroup">
+                    <span className="boardStatusDot" />
+                    <b>ตารางของคุณ</b>
+                    <span className="boardSkinCount tabular">
+                      {selectedSkins.length} สกิน
+                    </span>
+                  </div>
+
+                  <div className="boardActionsGroup">
+                    <button
+                      type="button"
+                      className="boardToolBtn"
+                      onClick={sortSkinsByHero}
+                      disabled={!selectedSkins.length}
+                      title="เรียงตามฮีโร่ (A → Z)"
+                    >
+                      <Sparkles size={13} /> เรียงฮีโร่
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boardToolBtn"
+                      onClick={reverseSkinsOrder}
+                      disabled={!selectedSkins.length}
+                      title="สลับลำดับหน้า-หลัง"
+                    >
+                      ⇄ สลับลำดับ
+                    </button>
+
+                    <button
+                      type="button"
+                      className={
+                        'boardToolBtn ' + (hideBoardBadges ? 'active' : '')
+                      }
+                      onClick={() => setHideBoardBadges((prev) => !prev)}
+                      disabled={!selectedSkins.length}
+                      title="ซ่อนหรือแสดงเลขลำดับและปุ่มลบเพื่อดูภาพไร้ขอบล้วน"
+                    >
+                      {hideBoardBadges ? '👁 แสดงเลขลำดับ' : '👁 ดูไร้ขอบล้วน'}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boardToolBtn dangerTextBtn"
+                      onClick={clearAllSelectedSkins}
+                      disabled={!selectedSkins.length}
+                    >
+                      <Trash2 size={13} /> ล้าง
+                    </button>
+
+                    {/* Column Slider Pill (1 to 20 columns, matching top-right of screenshot) */}
+                    <div
+                      className="sortskinColSliderPill"
+                      title="ปรับจำนวนรูปต่อแถว (1–20 รูป)"
+                    >
                       <button
                         type="button"
                         onClick={() =>
                           setLayout((l) => ({
                             ...l,
-                            columns: Math.max(1, (l.columns || 10) - 1),
+                            columns: Math.max(1, (l.columns || 6) - 1),
                           }))
                         }
                         disabled={layout.columns <= 1}
                       >
                         −
                       </button>
-                      <span className="tabular">{layout.columns} รูป/แถว</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={20}
+                        step={1}
+                        value={layout.columns || 6}
+                        onChange={(e) =>
+                          setLayout({
+                            ...layout,
+                            columns: Number(e.target.value),
+                          })
+                        }
+                      />
                       <button
                         type="button"
                         onClick={() =>
                           setLayout((l) => ({
                             ...l,
-                            columns: Math.min(20, (l.columns || 10) + 1),
+                            columns: Math.min(20, (l.columns || 6) + 1),
                           }))
                         }
                         disabled={layout.columns >= 20}
                       >
                         +
                       </button>
+                      <b className="tabular">{layout.columns}</b>
                     </div>
-                  </div>
 
-                  {selectedSkins.length > 0 && (
-                    <div className="colRecommendBar">
-                      <span className="recBadgeLabel">
-                        <Sparkles size={13} /> แนะนำสำหรับ{' '}
-                        {selectedSkins.length} รูป:
-                      </span>
-                      <div className="recChipsWrap">
-                        {recommendedColsList.map((rec) => (
-                          <button
-                            key={rec.cols}
-                            type="button"
-                            className={
-                              'recColBtn ' +
-                              (layout.columns === rec.cols ? 'active' : '')
-                            }
-                            onClick={() =>
-                              setLayout({ ...layout, columns: rec.cols })
-                            }
-                          >
-                            <b>{rec.cols} รูป/แถว</b>
-                            <small>({rec.reason})</small>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                    <button
+                      type="button"
+                      className="primary boardDownloadBtn"
+                      onClick={handleDownloadPng}
+                      disabled={isExporting || !selectedSkins.length}
+                    >
+                      <Download size={14} />{' '}
+                      {isExporting ? 'กำลังสร้าง...' : 'ดาวน์โหลด PNG'}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="allColsNumberRow">
-                  {ALL_COLUMN_OPTIONS.map((col) => {
-                    const isRec = recommendedColsList.some(
-                      (r) => r.cols === col && r.exact
-                    );
-                    return (
-                      <button
-                        key={col}
-                        type="button"
-                        className={
-                          'colNumBtn tabular ' +
-                          (layout.columns === col ? 'active ' : '') +
-                          (isRec ? 'recommended ' : '')
-                        }
-                        onClick={() => setLayout({ ...layout, columns: col })}
-                        title={
-                          isRec
-                            ? `${col} รูปต่อแถว (หารลงตัวพอดี)`
-                            : `${col} รูปต่อแถว`
-                        }
-                      >
-                        {col}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {selectedSkins.length > 0 && (
-                <>
-                  {/* Active Selection / Swap Action Banner */}
-                  <div
-                    className={
-                      'mobileSwapBanner ' +
-                      (activeArrangeItem ? 'hasSelection' : '')
-                    }
-                  >
-                    {activeArrangeItem ? (
-                      <div className="activeSwapControls">
-                        <div className="activeSwapTitle">
-                          <span className="swapBadge tabular">
-                            กำลังเลือกรูปที่ #{selectedArrangeIdx + 1}
-                          </span>
-                          <b>{activeArrangeItem.name}</b>
-                          <small>
-                            (แตะที่รูปอื่นเพื่อสลับตำแหน่ง หรือใช้ปุ่มเลื่อนลำดับด้านขวา)
-                          </small>
-                        </div>
-                        <div className="activeSwapBtns">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              moveSkinToIndex(selectedArrangeIdx, 0)
-                            }
-                            disabled={selectedArrangeIdx === 0}
-                          >
-                            ⏮ ไปแรกสุด
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              moveSelectedSkin(selectedArrangeIdx, -1)
-                            }
-                            disabled={selectedArrangeIdx === 0}
-                          >
-                            ← เลื่อนซ้าย
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              moveSelectedSkin(selectedArrangeIdx, 1)
-                            }
-                            disabled={
-                              selectedArrangeIdx === selectedSkins.length - 1
-                            }
-                          >
-                            เลื่อนขวา →
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              moveSkinToIndex(
-                                selectedArrangeIdx,
-                                selectedSkins.length - 1
-                              )
-                            }
-                            disabled={
-                              selectedArrangeIdx === selectedSkins.length - 1
-                            }
-                          >
-                            ไปท้ายสุด ⏭
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              duplicateSkinAtIndex(selectedArrangeIdx)
-                            }
-                          >
-                            + คัดลอกซ้ำ
-                          </button>
-                          <button
-                            type="button"
-                            className="dangerSwapBtn"
-                            onClick={() => {
-                              const targetUid = activeArrangeItem.uid;
-                              setSelectedSkins((prev) =>
-                                prev.filter((x) => x.uid !== targetUid)
-                              );
-                              setSelectedArrangeIdx(null);
-                            }}
-                          >
-                            ลบออก
-                          </button>
-                          <button
-                            type="button"
-                            className="cancelSwapBtn"
-                            onClick={() => setSelectedArrangeIdx(null)}
-                          >
-                            ยกเลิก
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="swapIdleHint">
-                        <Move size={15} />
-                        <span>
-                          <b>ปรับลำดับรูปสกินได้ทันที:</b> แตะที่รูปที่ต้องการย้าย 1 ครั้ง แล้วแตะรูปปลายทางเพื่อสลับที่กันทันที หรือลากสลับตำแหน่ง / กดปุ่ม ← → บนรูปได้เลย
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Interactive Reorder Strip / Grid */}
-                  <div className="step2SubHeading">
-                    <b>
-                      1. จัดลำดับรูปสกิน ({selectedSkins.length} รูป) — ลากสลับ หรือแตะที่รูปเพื่อย้ายตำแหน่ง
-                    </b>
-                  </div>
-                  <div
-                    className="visualArrangeGrid step2ArrangeGrid"
-                    onTouchMove={handleTouchDragMove}
-                    onTouchEnd={handleTouchDragEnd}
-                    style={{
-                      gridTemplateColumns: `repeat(${Math.min(layout.columns || 10, 10)}, minmax(0, 1fr))`,
-                    }}
-                  >
-                    {selectedSkins.map((item, i) => {
-                      const heroObj = heroesById[item.heroId];
-                      const imgSrc = item.image || heroObj?.image || '';
-                      const isSelectedForSwap = selectedArrangeIdx === i;
-
-                      return (
-                        <div
-                          key={item.uid}
-                          data-arrange-index={i}
+                {/* Smart Column Recommendation Strip */}
+                {selectedSkins.length > 0 && (
+                  <div className="sortskinRecStrip">
+                    <span className="recStripLabel">
+                      <Sparkles size={12} /> แนะนำสำหรับ {selectedSkins.length}{' '}
+                      รูป:
+                    </span>
+                    <div className="recStripChips">
+                      {recommendedColsList.map((rec) => (
+                        <button
+                          key={rec.cols}
+                          type="button"
                           className={
-                            'visualArrangeTile ' +
-                            (dragIndex === i ? 'dragging ' : '') +
-                            (isSelectedForSwap ? 'selectedForSwap ' : '')
+                            'recColBtn ' +
+                            (layout.columns === rec.cols ? 'active' : '')
                           }
-                          draggable
-                          onDragStart={() => handleDragStart(i)}
-                          onDragOver={(e) => handleDragOver(e, i)}
-                          onDragEnd={handleDragEnd}
-                          onClick={() => handleTileTap(i)}
-                          style={{
-                            background:
-                              heroObj?.color ||
-                              PASTEL_PALETTE[i % PASTEL_PALETTE.length],
+                          onClick={() =>
+                            setLayout({ ...layout, columns: rec.cols })
+                          }
+                        >
+                          <b>{rec.cols} รูป/แถว</b>
+                          <small>({rec.reason})</small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Active Swap / Selection Bar (Mobile & Desktop Tap-to-Swap) */}
+                {selectedSkins.length > 0 && activeArrangeItem && (
+                  <div className="mobileSwapBanner hasSelection compactSwapBanner">
+                    <div className="activeSwapControls">
+                      <div className="activeSwapTitle">
+                        <span className="swapBadge tabular">
+                          รูปที่ #{selectedArrangeIdx + 1}
+                        </span>
+                        <b>{activeArrangeItem.name}</b>
+                        <small>แตะรูปอื่นในตารางเพื่อสลับที่กันทันที</small>
+                      </div>
+                      <div className="activeSwapBtns">
+                        <button
+                          type="button"
+                          onClick={() => moveSkinToIndex(selectedArrangeIdx, 0)}
+                          disabled={selectedArrangeIdx === 0}
+                        >
+                          ⏮ แรกสุด
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moveSelectedSkin(selectedArrangeIdx, -1)
+                          }
+                          disabled={selectedArrangeIdx === 0}
+                        >
+                          ← ซ้าย
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moveSelectedSkin(selectedArrangeIdx, 1)
+                          }
+                          disabled={
+                            selectedArrangeIdx === selectedSkins.length - 1
+                          }
+                        >
+                          ขวา →
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moveSkinToIndex(
+                              selectedArrangeIdx,
+                              selectedSkins.length - 1
+                            )
+                          }
+                          disabled={
+                            selectedArrangeIdx === selectedSkins.length - 1
+                          }
+                        >
+                          ท้ายสุด ⏭
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            duplicateSkinAtIndex(selectedArrangeIdx)
+                          }
+                        >
+                          + ซ้ำ
+                        </button>
+                        <button
+                          type="button"
+                          className="dangerSwapBtn"
+                          onClick={() => {
+                            const targetUid = activeArrangeItem.uid;
+                            setSelectedSkins((prev) =>
+                              prev.filter((x) => x.uid !== targetUid)
+                            );
+                            setSelectedArrangeIdx(null);
                           }}
                         >
-                          {imgSrc && (
-                            <img
-                              src={imgSrc}
-                              alt=""
-                              referrerPolicy="no-referrer"
-                              draggable={false}
-                            />
-                          )}
-
-                          <div
-                            className="touchDragHandle"
-                            onTouchStart={(e) => {
-                              e.stopPropagation();
-                              handleTouchDragStart(i);
-                            }}
-                            title="แตะค้างเพื่อลากสลับตำแหน่ง"
-                          >
-                            <Move size={11} />
-                            <span className="tabular">#{i + 1}</span>
-                          </div>
-
-                          {isSelectedForSwap && (
-                            <div className="swapSelectedOverlay">
-                              <span>กำลังเลือก · แตะรูปอื่นเพื่อสลับ</span>
-                            </div>
-                          )}
-
-                          <div
-                            className="visualTileControls"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => moveSelectedSkin(i, -1)}
-                              disabled={i === 0}
-                              title="เลื่อนไปทางซ้าย"
-                            >
-                              ←
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moveSelectedSkin(i, 1)}
-                              disabled={i === selectedSkins.length - 1}
-                              title="เลื่อนไปทางขวา"
-                            >
-                              →
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => duplicateSkinAtIndex(i)}
-                              title="คัดลอกสกินนี้ซ้ำอีก 1 รูป"
-                            >
-                              +
-                            </button>
-                            <button
-                              type="button"
-                              className="removeTileBtn"
-                              onClick={() => {
-                                setSelectedSkins((prev) =>
-                                  prev.filter((x) => x.uid !== item.uid)
-                                );
-                                if (selectedArrangeIdx === i) {
-                                  setSelectedArrangeIdx(null);
-                                }
-                              }}
-                              title="นำออก"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                          ลบ
+                        </button>
+                        <button
+                          type="button"
+                          className="cancelSwapBtn"
+                          onClick={() => setSelectedArrangeIdx(null)}
+                        >
+                          ยกเลิก
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </>
-              )}
+                )}
 
-              {/* Live Seamless Collage Preview right inside Step 2 */}
-              <div className="step2SubHeading previewSubHeading">
-                <b>
-                  2. พรีวิวภาพคอลเลกชันแบบไร้ขอบ ({selectedSkins.length} รูป ·{' '}
-                  {layout.columns} รูปต่อแถว)
-                </b>
-                <div className="previewQuickControls">
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={handleSaveToCollection}
-                    disabled={!selectedSkins.length}
-                  >
-                    <FolderHeart size={14} /> บันทึกคอลเลกชัน
-                  </button>
-                  <button
-                    type="button"
-                    className="primary"
-                    onClick={handleDownloadPng}
-                    disabled={isExporting || !selectedSkins.length}
-                  >
-                    <Download size={15} />{' '}
-                    {isExporting
-                      ? 'กำลังสร้างไฟล์ภาพ...'
-                      : 'ดาวน์โหลดภาพ PNG (High-Res)'}
-                  </button>
-                </div>
-              </div>
+                {/* Unified Live Seamless Preview & Reorder Grid */}
+                {selectedSkins.length === 0 ? (
+                  <div className="sortskinEmptyBoard">
+                    <Sparkles size={26} />
+                    <b>ยังไม่ได้เลือกสกินเข้าตาราง</b>
+                    <p>
+                      คลิกเลือกหมวดฮีโร่ด้านซ้าย (หรือด้านบนในมือถือ) แล้วแตะสกินเพื่อนำมาเรียงโชว์ในพรีวิวนี้ได้เลย
+                    </p>
+                  </div>
+                ) : (
+                  <div className="sortskinLiveBoardCanvasWrap">
+                    <div
+                      ref={previewRef}
+                      className="seamlessSkinGrid sortskinInteractiveGrid"
+                      onTouchMove={handleTouchDragMove}
+                      onTouchEnd={handleTouchDragEnd}
+                      style={{
+                        gridTemplateColumns: `repeat(${layout.columns || 6}, minmax(0, 1fr))`,
+                      }}
+                    >
+                      {selectedSkins.map((item, i) => {
+                        const heroObj = heroesById[item.heroId];
+                        const imgSrc = item.image || heroObj?.image || '';
+                        const isSelectedForSwap = selectedArrangeIdx === i;
 
-              <div className="previewWrap">
-                <PosterCanvas
-                  previewRef={previewRef}
-                  selectedSkins={selectedSkins}
-                  heroesById={heroesById}
-                  layout={layout}
-                />
-              </div>
-            </div>
+                        return (
+                          <div
+                            key={item.uid}
+                            data-arrange-index={i}
+                            className={
+                              'seamlessSkinTile sortskinBoardTile ' +
+                              (dragIndex === i ? 'dragging ' : '') +
+                              (isSelectedForSwap ? 'selectedForSwap ' : '')
+                            }
+                            draggable
+                            onDragStart={() => handleDragStart(i)}
+                            onDragOver={(e) => handleDragOver(e, i)}
+                            onDragEnd={handleDragEnd}
+                            onClick={() => handleTileTap(i)}
+                            style={{
+                              background:
+                                heroObj?.color ||
+                                PASTEL_PALETTE[i % PASTEL_PALETTE.length],
+                            }}
+                          >
+                            {imgSrc && (
+                              <img
+                                src={imgSrc}
+                                alt=""
+                                crossOrigin="anonymous"
+                                decoding="sync"
+                                referrerPolicy="no-referrer"
+                                draggable={false}
+                              />
+                            )}
 
-            <div className="bottomActions">
-              <button className="secondary" onClick={() => setStep(1)}>
-                <ArrowLeft size={16} /> กลับไปเลือกฮีโร่/ใส่รูป
-              </button>
-              <div className="selectedSummaryInline">
-                <span className="muted">
-                  เลือกไว้แล้ว <b className="tabular">{selectedSkins.length}</b>{' '}
-                  รูป ({layout.columns} รูป/แถว)
-                </span>
+                            {/* Top-Left Number Badge (Matches Screenshot "1, 2, 3..." & Touch Drag Handle) */}
+                            {!hideBoardBadges && (
+                              <div
+                                className="boardTileNumBadge tabular"
+                                onTouchStart={(e) => {
+                                  e.stopPropagation();
+                                  handleTouchDragStart(i);
+                                }}
+                                title="แตะค้างเพื่อลากสลับตำแหน่ง หรือแตะที่รูปเพื่อสลับที่"
+                              >
+                                {i + 1}
+                              </div>
+                            )}
+
+                            {/* Top-Right Remove Circle Button (Matches Screenshot "×") */}
+                            {!hideBoardBadges && (
+                              <button
+                                type="button"
+                                className="boardTileCloseBtn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSkins((prev) =>
+                                    prev.filter((x) => x.uid !== item.uid)
+                                  );
+                                  if (selectedArrangeIdx === i) {
+                                    setSelectedArrangeIdx(null);
+                                  }
+                                }}
+                                title="ลบสกินนี้ออกจากตาราง"
+                              >
+                                ×
+                              </button>
+                            )}
+
+                            {isSelectedForSwap && (
+                              <div className="swapSelectedOverlay">
+                                <span>แตะรูปอื่นเพื่อสลับ</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="boardHintFooter">
+                      <span>
+                        💡 <b>วิธีสลับตำแหน่ง:</b> แตะที่รูปแรกแล้วแตะรูปที่ต้องการสลับที่ (หรือลากที่ตัวเลขมุมซ้ายบน) · เวลา<b>ดาวน์โหลด PNG</b> ระบบจะตัดตัวเลขและปุ่มออกให้อัตโนมัติ ได้ภาพไร้ขอบ 100%
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <button
-                className="primary"
-                onClick={handleDownloadPng}
-                disabled={isExporting || !selectedSkins.length}
-              >
-                <Download size={16} />{' '}
-                {isExporting
-                  ? 'กำลังสร้างไฟล์ภาพ...'
-                  : 'ดาวน์โหลดภาพคอลเลกชัน PNG'}
-              </button>
             </div>
           </div>
         )}

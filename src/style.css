@@ -2822,5 +2822,704 @@ footer span {
   background: #fde4ec;
 }
 
+/* ============================================================
+   STEP 2: SORTSKIN 2-PANE LAYOUT (Matches Reference Image)
+   - Left Sidebar: Hero Categories with Nested Skin Drill-Down
+   - Right Board: Live Seamless Preview & Reorder Board
+   ============================================================ */
+.sortskinWorkspacePanel {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.sortskinTwoPaneLayout {
+  display: grid;
+  grid-template-columns: 310px minmax(0, 1fr);
+  min-height: 660px;
+  align-items: stretch;
+}
+
+/* Left Sidebar */
+.sortskinSidebar {
+  border-right: 1px solid #eeddec;
+  background: #fffcfe;
+  display: flex;
+  flex-direction: column;
+  max-height: 760px;
+}
+
+.sortskinSidebarTabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid #f0e1ee;
+  min-height: 50px;
+  gap: 8px;
+}
+
+.sortskinTabBtn {
+  background: transparent;
+  border: 0;
+  border-bottom: 2.5px solid transparent;
+  padding: 13px 6px 11px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #6b496e;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sortskinTabBtn.active {
+  border-bottom-color: #d482b6;
+  color: #5a385e;
+}
+
+.sortskinTabBtn small {
+  color: #a688a9;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.sortskinSidebarRightActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sortskinMiniUploadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f9edf6;
+  border: 1px solid #e6cde2;
+  color: #87547f;
+  border-radius: 99px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mobileCollapseToggleBtn {
+  display: none;
+  background: #f3e4f0;
+  color: #7d4e76;
+  border-radius: 99px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sortskinSidebarBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  gap: 10px;
+}
+
+.sortskinSearchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #faf3f9;
+  border: 1px solid #ead7e8;
+  border-radius: 99px;
+  padding: 8px 13px;
+  color: #9e7fa1;
+}
+
+.sortskinSearchBox.compactSearch {
+  padding: 6px 11px;
+}
+
+.sortskinSearchBox input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  width: 100%;
+  font-size: 12.5px;
+  color: #5b435e;
+}
+
+.clearSearchInlineBtn {
+  background: #e9d5e6;
+  color: #7b5478;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+/* View 1: Hero Category List */
+.sortskinHeroList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 3px;
+}
+
+.sortskinHeroRow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 7px 10px;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+.sortskinHeroRow:hover {
+  background: #faf1f8;
+  border-color: #eedbe9;
+}
+
+.sortskinHeroRow.hasPicked {
+  background: #fdf5fb;
+  border-color: #ebd3e6;
+}
+
+.sortskinHeroAvatar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  overflow: visible;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 700 17px 'Playfair Display', serif;
+}
+
+.sortskinHeroAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+
+.heroActiveDot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #e8845b;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.sortskinHeroMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sortskinHeroMeta b {
+  font-size: 13.5px;
+  color: #4f3953;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sortskinHeroMeta small {
+  font-size: 11.5px;
+  color: #9b819e;
+}
+
+.sortskinHeroMeta small strong {
+  color: #5b3b60;
+  font-weight: 700;
+}
+
+.sortskinChevron {
+  color: #bca3bf;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* View 2: Nested Skins Inside Selected Hero Category */
+.sortskinDrawerBackBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #faf0f7;
+  border: 1px solid #ead5e6;
+  border-radius: 12px;
+  padding: 7px 10px;
+}
+
+.backToHeroesBtn {
+  background: #fff;
+  border: 1px solid #e3cadf;
+  color: #794d74;
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.drawerHeroTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawerHeroTitle b {
+  font-size: 13px;
+  color: #583b5c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawerHeroTitle small {
+  font-size: 10.5px;
+  color: #937497;
+}
+
+.selectAllHeroSkinsBtn {
+  background: linear-gradient(120deg, #d99dc4, #b98cc7);
+  color: #fff;
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sortskinNestedSkinGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 3px;
+  align-content: start;
+}
+
+.nestedSkinCard {
+  border: 1.5px solid #eee0ec;
+  border-radius: 12px;
+  background: #fff;
+  padding: 5px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: transform 0.12s ease, border-color 0.14s ease;
+}
+
+.nestedSkinCard:hover {
+  transform: translateY(-1px);
+  border-color: #d69ec6;
+}
+
+.nestedSkinCard.chosen {
+  border-color: #c874b2;
+  background: #fdf4fa;
+}
+
+.nestedSkinArt {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 9px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 700 20px 'Playfair Display', serif;
+}
+
+.nestedSkinArt img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.nestedSkinName {
+  padding: 0 2px 2px;
+}
+
+.nestedSkinName b {
+  display: block;
+  font-size: 11px;
+  color: #5e4462;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nestedEmptySkinBox {
+  text-align: center;
+  padding: 28px 14px;
+  background: #fcf6fa;
+  border: 1px dashed #e3c8de;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.nestedEmptySkinBox p {
+  margin: 0;
+  font-size: 12px;
+  color: #8f6f93;
+}
+
+/* Right Main Board ("ตารางของคุณ N สกิน") */
+.sortskinMainBoard {
+  display: flex;
+  flex-direction: column;
+  background: #fffafd;
+  min-width: 0;
+}
+
+.sortskinBoardToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f0e1ee;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.boardTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #4f3953;
+}
+
+.boardStatusDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e8845b;
+  display: inline-block;
+}
+
+.boardSkinCount {
+  color: #6a4c6e;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.boardActionsGroup {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.boardToolBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #faf2f8;
+  border: 1px solid #ead8e8;
+  color: #6f4e73;
+  border-radius: 99px;
+  padding: 6px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.boardToolBtn.active {
+  background: #f0dced;
+  border-color: #c886b6;
+  color: #5b3658;
+}
+
+.boardToolBtn:disabled {
+  opacity: 0.4;
+}
+
+.boardToolBtn.dangerTextBtn {
+  color: #b94c6b;
+  background: #fff4f7;
+  border-color: #f3cdd8;
+}
+
+.sortskinColSliderPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f7eef6;
+  border: 1px solid #e6d2e4;
+  border-radius: 99px;
+  padding: 4px 11px;
+}
+
+.sortskinColSliderPill button {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #dfc7dc;
+  color: #6e4c72;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.sortskinColSliderPill input[type='range'] {
+  width: 90px;
+  accent-color: #c97bb2;
+  cursor: pointer;
+}
+
+.sortskinColSliderPill b {
+  font-size: 12.5px;
+  color: #5b3d5f;
+  min-width: 18px;
+  text-align: center;
+}
+
+.boardDownloadBtn {
+  padding: 7px 14px !important;
+  font-size: 12px !important;
+}
+
+/* Smart Column Recommendation Strip inside Board */
+.sortskinRecStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fdf6fb;
+  border-bottom: 1px solid #f2e4f0;
+  overflow-x: auto;
+}
+
+.recStripLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #8d5882;
+  white-space: nowrap;
+}
+
+.recStripChips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compactSwapBanner {
+  margin: 10px 16px 0;
+}
+
+/* Live Board Canvas & Interactive Tiles */
+.sortskinLiveBoardCanvasWrap {
+  padding: 14px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sortskinInteractiveGrid {
+  box-shadow: 0 10px 28px rgba(136, 92, 130, 0.14);
+}
+
+.sortskinBoardTile {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sortskinBoardTile.dragging {
+  opacity: 0.45;
+}
+
+.sortskinBoardTile.selectedForSwap {
+  outline: 3px solid #d164ae;
+  outline-offset: -3px;
+  z-index: 4;
+}
+
+/* Top-Left Circular Number Badge (1, 2, 3...) matching Screenshot */
+.boardTileNumBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 4;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: rgba(28, 22, 32, 0.78);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  cursor: grab;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Top-Right Circular Remove Button (×) matching Screenshot */
+.boardTileCloseBtn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 4;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(28, 22, 32, 0.78);
+  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+}
+
+.boardTileCloseBtn:hover {
+  background: #c94a6d;
+}
+
+.sortskinEmptyBoard {
+  margin: 28px 16px;
+  padding: 56px 20px;
+  border: 1.5px dashed #e6cde2;
+  border-radius: 18px;
+  background: #fdf8fc;
+  text-align: center;
+  color: #8f6f93;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.sortskinEmptyBoard b {
+  font-size: 15px;
+  color: #69496d;
+}
+
+.sortskinEmptyBoard p {
+  margin: 0;
+  font-size: 12.5px;
+  max-width: 420px;
+}
+
+.boardHintFooter {
+  font-size: 11.5px;
+  color: #8a6c8e;
+  background: #faf1f8;
+  border: 1px solid #ecd9ea;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+/* ============================================================
+   MOBILE LAYOUT: Keep Hero/Skin Category Drawer Compact on Top
+   so the Live Preview Board is ALWAYS visible right below!
+   ============================================================ */
+@media (max-width: 960px) {
+  .sortskinTwoPaneLayout {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .sortskinSidebar {
+    border-right: 0;
+    border-bottom: 2px solid #ead6e7;
+    max-height: none;
+  }
+
+  .mobileCollapseToggleBtn {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Compact scrollable height on mobile so Live Preview below is always visible on screen! */
+  .sortskinHeroList {
+    max-height: 195px;
+  }
+
+  .sortskinNestedSkinGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-height: 215px;
+  }
+}
+
+@media (max-width: 560px) {
+  .sortskinNestedSkinGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-height: 195px;
+  }
+
+  .sortskinBoardToolbar {
+    padding: 9px 10px;
+    gap: 7px;
+  }
+
+  .sortskinColSliderPill input[type='range'] {
+    width: 68px;
+  }
+
+  .sortskinLiveBoardCanvasWrap {
+    padding: 8px 6px 14px;
+  }
+
+  .boardTileNumBadge,
+  .boardTileCloseBtn {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 9.5px;
+    top: 3px;
+  }
+
+  .boardTileNumBadge {
+    left: 3px;
+  }
+
+  .boardTileCloseBtn {
+    right: 3px;
+  }
+}
+
+
 
 
