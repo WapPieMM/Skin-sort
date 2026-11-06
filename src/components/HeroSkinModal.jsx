@@ -12,7 +12,7 @@ import {
   Download,
   FileUp,
 } from 'lucide-react';
-import { HERO_ROLES, PASTEL_PALETTE } from '../data/defaultCatalog';
+import { PASTEL_PALETTE } from '../data/defaultCatalog';
 import { uploadImageFile } from '../utils/cloudStorage';
 
 export default function HeroSkinModal({
@@ -36,7 +36,6 @@ export default function HeroSkinModal({
   const [isCreatingHero, setIsCreatingHero] = useState(false);
   const [newHeroName, setNewHeroName] = useState('');
   const [newHeroTitle, setNewHeroTitle] = useState('');
-  const [newHeroRole, setNewHeroRole] = useState('Mage');
   const [newHeroImage, setNewHeroImage] = useState('');
 
   const [newSkinName, setNewSkinName] = useState('');
@@ -132,7 +131,6 @@ export default function HeroSkinModal({
     const created = onAddHero({
       name: newHeroName.trim(),
       title: newHeroTitle.trim() || 'RoV Hero',
-      role: newHeroRole,
       image: newHeroImage.trim(),
       color: PASTEL_PALETTE[heroes.length % PASTEL_PALETTE.length],
     });
@@ -219,16 +217,6 @@ export default function HeroSkinModal({
                   value={newHeroTitle}
                   onChange={(e) => setNewHeroTitle(e.target.value)}
                 />
-                <select
-                  value={newHeroRole}
-                  onChange={(e) => setNewHeroRole(e.target.value)}
-                >
-                  {HERO_ROLES.filter((r) => r.id !== 'All').map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
                 <input
                   placeholder="วางลิงก์ URL รูปฮีโร่..."
                   value={newHeroImage}
@@ -259,7 +247,7 @@ export default function HeroSkinModal({
             )}
 
             <div className="modalHeroList">
-              {heroes.map((h, idx) => (
+              {[...heroes].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })).map((h, idx) => (
                 <button
                   key={h.id}
                   className={
@@ -286,9 +274,7 @@ export default function HeroSkinModal({
                   </div>
                   <div className="modalHeroMeta">
                     <b>{h.name}</b>
-                    <small>
-                      {h.role} · {h.skins.length} สกิน
-                    </small>
+                    <small>{h.skins.length} สกิน</small>
                   </div>
                 </button>
               ))}
@@ -365,21 +351,6 @@ export default function HeroSkinModal({
                     }
                     placeholder="ชื่อฮีโร่..."
                   />
-                </div>
-                <div className="fieldGroup">
-                  <label>สายฮีโร่ (Role)</label>
-                  <select
-                    value={currentHero.role || 'Mage'}
-                    onChange={(e) =>
-                      onUpdateHero(currentHero.id, { role: e.target.value })
-                    }
-                  >
-                    {HERO_ROLES.filter((r) => r.id !== 'All').map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 <div className="fieldGroup fullWidth">
                   <label>

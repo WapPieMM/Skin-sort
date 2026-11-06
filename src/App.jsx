@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import {
   DEFAULT_HEROES,
-  HERO_ROLES,
   POSTER_THEMES,
   RANK_OPTIONS,
   BIND_STATUS_OPTIONS,
@@ -182,7 +181,6 @@ export function App() {
 
   // 4. Search & Filters
   const [heroQuery, setHeroQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('All');
   const [skinQuery, setSkinQuery] = useState('');
   const [showAllHeroesSkins, setShowAllHeroesSkins] = useState(false);
 
@@ -268,7 +266,7 @@ export function App() {
     );
   };
 
-  const handleAddHero = ({ name, title, role, image, color }) => {
+  const handleAddHero = ({ name, title, image, color }) => {
     const id =
       name.toLowerCase().replace(/[^a-z0-9]/g, '-') +
       '-' +
@@ -277,7 +275,6 @@ export function App() {
       id,
       name,
       title,
-      role,
       image,
       color,
       skins: [],
@@ -487,14 +484,13 @@ export function App() {
 
   // Filtered Hero List for Step 1
   const filteredHeroes = useMemo(() => {
-    return heroes.filter((h) => {
-      const matchesRole = roleFilter === 'All' || h.role === roleFilter;
-      const matchesQuery =
+    return heroes
+      .filter((h) =>
         h.name.toLowerCase().includes(heroQuery.toLowerCase()) ||
-        (h.title || '').toLowerCase().includes(heroQuery.toLowerCase());
-      return matchesRole && matchesQuery;
-    });
-  }, [heroes, roleFilter, heroQuery]);
+        (h.title || '').toLowerCase().includes(heroQuery.toLowerCase())
+      )
+      .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+  }, [heroes, heroQuery]);
 
   // Filtered Skins for Step 2 (Either active hero or all heroes)
   const displayedSkinEntries = useMemo(() => {
@@ -749,7 +745,7 @@ export function App() {
               </button>
             </div>
 
-            {/* Search & Role Filter Bar */}
+            {/* Search Heroes */}
             <div className="filterBarRow">
               <div className="search flex1">
                 <Search size={17} />
@@ -758,20 +754,6 @@ export function App() {
                   value={heroQuery}
                   onChange={(e) => setHeroQuery(e.target.value)}
                 />
-              </div>
-
-              <div className="rolePills">
-                {HERO_ROLES.map((r) => (
-                  <button
-                    key={r.id}
-                    className={
-                      'filterTab ' + (roleFilter === r.id ? 'active' : '')
-                    }
-                    onClick={() => setRoleFilter(r.id)}
-                  >
-                    {r.label}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -815,9 +797,7 @@ export function App() {
                     </div>
                     <div className="heroTileFooter">
                       <b>{h.name}</b>
-                      <small>
-                        {h.role} · {h.skins.length} สกิน
-                      </small>
+                      <small>{h.skins.length} สกิน</small>
                     </div>
                   </div>
                 );
@@ -909,23 +889,6 @@ export function App() {
                           }
                           placeholder="เช่น Archangel / Pistol Assassin"
                         />
-                      </div>
-                      <div className="fieldGroup">
-                        <label>สายฮีโร่ (Role)</label>
-                        <select
-                          value={activeHero.role || 'Mage'}
-                          onChange={(e) =>
-                            handleUpdateHero(activeHero.id, {
-                              role: e.target.value,
-                            })
-                          }
-                        >
-                          {HERO_ROLES.filter((r) => r.id !== 'All').map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.label}
-                            </option>
-                          ))}
-                        </select>
                       </div>
                     </div>
 
