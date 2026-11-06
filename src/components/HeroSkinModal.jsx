@@ -84,6 +84,35 @@ export default function HeroSkinModal({
     e.target.value = '';
   };
 
+  const handleBulkSkinUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    let uploaded = 0;
+    let failed = 0;
+    for (const file of files) {
+      try {
+        const image = await compressImageFile(file, 460, 0.88);
+        const name = file.name
+          .replace(/\\.[^.]+$/, '')
+          .replace(/[_-]+/g, ' ')
+          .replace(/\\s+/g, ' ')
+          .trim() || `Skin ${currentHero.skins.length + uploaded + 1}`;
+        onAddSkin(currentHero.id, { name, image });
+        uploaded += 1;
+      } catch (err) {
+        failed += 1;
+      }
+    }
+
+    if (failed) {
+      flashStatus(`อัปโหลดสำเร็จ ${uploaded} รูป · ไม่สำเร็จ ${failed} รูป`);
+    } else {
+      flashStatus(`เพิ่มสกินจากรูปภาพ ${uploaded} รูปสำเร็จ`);
+    }
+    e.target.value = '';
+  };
+
   const handleCreateHeroSubmit = (e) => {
     e.preventDefault();
     if (!newHeroName.trim()) return;
@@ -104,9 +133,8 @@ export default function HeroSkinModal({
 
   const handleCreateSkinSubmit = (e) => {
     e.preventDefault();
-    if (!newSkinName.trim()) return;
     onAddSkin(currentHero.id, {
-      name: newSkinName.trim(),
+      name: newSkinName.trim() || `Skin ${currentHero.skins.length + 1}`,
       image: newSkinImage.trim(),
     });
     setNewSkinName('');
@@ -373,10 +401,9 @@ export default function HeroSkinModal({
               </div>
               <div className="addSkinInputs">
                 <input
-                  placeholder="ชื่อสกินใหม่ (เช่น Dimension Breaker)"
+                  placeholder="ชื่อสกิน (ไม่บังคับ)"
                   value={newSkinName}
                   onChange={(e) => setNewSkinName(e.target.value)}
-                  required
                 />
                 <input
                   placeholder="ลิงก์ URL รูปสกิน (ถ้ามี)..."
@@ -384,13 +411,13 @@ export default function HeroSkinModal({
                   onChange={(e) => setNewSkinImage(e.target.value)}
                 />
                 <label className="uploadLabelBtn">
-                  <ImageIcon size={14} />{' '}
-                  {newSkinImage ? 'เปลี่ยนไฟล์รูป' : 'อัปโหลดรูปสกิน'}
+                  <ImageIcon size={14} /> อัปโหลดหลายรูป
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     hidden
-                    onChange={(e) => handleSkinFileUpload(e, null)}
+                    onChange={handleBulkSkinUpload}
                   />
                 </label>
                 <button type="submit" className="primary">
