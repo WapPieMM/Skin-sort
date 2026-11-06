@@ -33,12 +33,17 @@ import HeroSkinModal from './components/HeroSkinModal';
 import PosterCanvas from './components/PosterCanvas';
 
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
+const CATALOG_SKIN_MIGRATION_KEY = 'rov_white_angel_catalog_skins_cleared_v1';
 const SAVED_POSTERS_KEY = 'rov_white_angel_saved_posters_v2';
 
 export function App() {
   // 1. Hero & Skin Catalog State (Persisted in localStorage)
   const [heroes, setHeroes] = useState(() => {
     try {
+      // Clear skins from the pre-tier catalog only once. After migration, keep
+      // newly uploaded skins when the app is reopened or refreshed.
+      const shouldClearLegacySkins =
+        localStorage.getItem(CATALOG_SKIN_MIGRATION_KEY) !== 'done';
       const saved = localStorage.getItem(CATALOG_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -47,9 +52,22 @@ export function App() {
           const newlyAddedDefaults = DEFAULT_HEROES.filter(
             (hero) => !savedIds.has(hero.id)
           );
-          return [...parsed.map((hero) => ({ ...hero, skins: [] })), ...newlyAddedDefaults.map((hero) => ({ ...hero, skins: [] }))];
+          const migratedHeroes = parsed.map((hero) => ({
+            ...hero,
+            skins: shouldClearLegacySkins
+              ? []
+              : Array.isArray(hero.skins)
+                ? hero.skins
+                : [],
+          }));
+          localStorage.setItem(CATALOG_SKIN_MIGRATION_KEY, 'done');
+          return [
+            ...migratedHeroes,
+            ...newlyAddedDefaults.map((hero) => ({ ...hero, skins: [] })),
+          ];
         }
       }
+      localStorage.setItem(CATALOG_SKIN_MIGRATION_KEY, 'done');
     } catch {
       // Fallback to default
     }
@@ -273,10 +291,13 @@ export function App() {
   };
 
   const handleImportCatalog = (importedHeroes) => {
-    const heroesWithoutSkins = importedHeroes.map((hero) => ({ ...hero, skins: [] }));
-    setHeroes(heroesWithoutSkins);
+    const importedCatalog = importedHeroes.map((hero) => ({
+      ...hero,
+      skins: Array.isArray(hero.skins) ? hero.skins : [],
+    }));
+    setHeroes(importedCatalog);
     setSelectedSkins([]);
-    if (heroesWithoutSkins[0]?.id) setActiveHeroId(heroesWithoutSkins[0].id);
+    if (importedCatalog[0]?.id) setActiveHeroId(importedCatalog[0].id);
   };
 
   // Direct Inline Hero Image Upload in Step 1
