@@ -48,3 +48,19 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
 หากยังไม่ได้ตั้ง Environment Variables ระบบ API จะปฏิเสธการเข้าสู่ระบบตามค่าเริ่มต้น
+
+
+## Supabase Image Storage
+
+Image uploads use signed upload URLs created by the Vercel server after validating the admin session. Original image files are uploaded directly from the browser to Supabase Storage; the application does not resize or recompress those originals.
+
+Before enabling cloud uploads:
+
+1. In Supabase Dashboard, open **SQL Editor** and run the contents of `supabase/setup.sql` once. This creates the public-read `skin-images` bucket with a 20 MB file limit.
+2. In Vercel → Project → Settings → Environment Variables, add:
+   - `SUPABASE_URL`: your Supabase project URL
+   - `SUPABASE_SERVICE_ROLE_KEY`: the server-only service-role key
+   - `SUPABASE_STORAGE_BUCKET`: `skin-images` (optional; this is the default)
+3. Redeploy the Vercel project.
+
+Never add the service-role key to a `VITE_*` variable, frontend code, or Git. The bucket is public only for image delivery; this project does not create anonymous upload or delete policies. New uploads are stored in cloud storage, while the existing IndexedDB catalog remains local until the separate catalog-sync and legacy-image migration step is completed.
