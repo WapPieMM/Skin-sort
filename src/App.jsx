@@ -156,6 +156,14 @@ export function App() {
       return [];
     }
   });
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVED_POSTERS_KEY, JSON.stringify(savedPosters));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [savedPosters]);
+
   const [favorite, setFavorite] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -971,7 +979,7 @@ export function App() {
               })}
             </div>
 
-            {/* Skin Search & Tier Filter */}
+            {/* Skin Search */}
             <div className="filterBarRow">
               <div className="search flex1">
                 <Search size={17} />
