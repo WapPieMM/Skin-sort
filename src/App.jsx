@@ -61,77 +61,123 @@ export function App() {
     DEFAULT_HEROES.map((hero) => ({ ...hero, skins: [] }))
   );
   const [isCatalogLoaded, setIsCatalogLoaded] = useState(false);
+  const [cloudCatalogReady, setCloudCatalogReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadCatalog = async () => {
       try {
-        // IndexedDB supports much larger image collections than localStorage.
-        const indexedCatalog = await loadCatalogFromIndexedDB();
-        if (Array.isArray(indexedCatalog) && indexedCatalog.length > 0) {
-          if (!cancelled) setHeroes(indexedCatalog);
+        // The shared Supabase catalog is the source of truth across devices.
+        const cloudResponse = await fetch('/api/admin/catalog', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+        });
+        if (!cloudResponse.ok) throw new Error('โหลดคลังจากคลาวด์ไม่สำเร็จ');
+        const cloudData = await cloudResponse.json();
+
+        if (Array.isArray(cloudData.catalog) && cloudData.catalog.length > 0) {
+          await saveCatalogToIndexedDB(cloudData.catalog);
+          if (!cancelled) {
+            setHeroes(cloudData.catalog);
+            setCloudCatalogReady(true);
+          }
           return;
         }
 
-        // Migrate the existing localStorage catalog once.
-        let parsed = [];
-        try {
-          const saved = localStorage.getItem(CATALOG_STORAGE_KEY);
-          parsed = saved ? JSON.parse(saved) : [];
-        } catch {
-          parsed = [];
+        // No shared catalog exists yet: recover this device's existing catalog.
+        const indexedCatalog = await loadCatalogFromIndexedDB();
+        let localCatalog = Array.isArray(indexedCatalog) && indexedCatalog.length
+          ? indexedCatalog
+          : null;
+        let hasExistingCatalogData = Boolean(localCatalog?.some(
+          (hero) => (Array.isArray(hero.skins) && hero.skins.length > 0) ||
+            !DEFAULT_HEROES.some((defaultHero) =>
+              defaultHero.id === hero.id &&
+              defaultHero.name === hero.name &&
+              defaultHero.image === hero.image
+            )
+        ));
+
+        if (!localCatalog) {
+          let parsed = [];
+          try {
+            const saved = localStorage.getItem(CATALOG_STORAGE_KEY);
+            parsed = saved ? JSON.parse(saved) : [];
+          } catch {
+            parsed = [];
+          }
+
+          const shouldClearLegacySkins =
+            localStorage.getItem(CATALOG_SKIN_MIGRATION_KEY) !== 'done';
+          hasExistingCatalogData = Array.isArray(parsed) && parsed.some(
+            (hero) => (Array.isArray(hero.skins) && hero.skins.length > 0) ||
+              !DEFAULT_HEROES.some((defaultHero) =>
+                defaultHero.id === hero.id &&
+                defaultHero.name === hero.name &&
+                defaultHero.image === hero.image
+              )
+          );
+          const source = Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_HEROES;
+          const savedIds = new Set(source.map((hero) => hero.id));
+          const newlyAddedDefaults = DEFAULT_HEROES.filter((hero) => !savedIds.has(hero.id));
+          localCatalog = [
+            ...source.map((hero) => ({
+              ...hero,
+              skins: shouldClearLegacySkins
+                ? []
+                : Array.isArray(hero.skins) ? hero.skins : [],
+            })),
+            ...newlyAddedDefaults.map((hero) => ({ ...hero, skins: [] })),
+          ];
+          await saveCatalogToIndexedDB(localCatalog);
+          localStorage.setItem(CATALOG_SKIN_MIGRATION_KEY, 'done');
         }
 
-        const shouldClearLegacySkins =
-          localStorage.getItem(CATALOG_SKIN_MIGRATION_KEY) !== 'done';
-        const source = Array.isArray(parsed) && parsed.length
-          ? parsed
-          : DEFAULT_HEROES;
-        const savedIds = new Set(source.map((hero) => hero.id));
-        const newlyAddedDefaults = DEFAULT_HEROES.filter(
-          (hero) => !savedIds.has(hero.id)
-        );
-        const migratedHeroes = source.map((hero) => ({
-          ...hero,
-          skins: shouldClearLegacySkins
-            ? []
-            : Array.isArray(hero.skins)
-              ? hero.skins
-              : [],
-        }));
-        const nextCatalog = [
-          ...migratedHeroes,
-          ...newlyAddedDefaults.map((hero) => ({ ...hero, skins: [] })),
-        ];
+        if (cancelled) return;
+        setHeroes(localCatalog);
 
-        await saveCatalogToIndexedDB(nextCatalog);
-        localStorage.setItem(CATALOG_SKIN_MIGRATION_KEY, 'done');
-        if (!cancelled) setHeroes(nextCatalog);
+        // Bootstrap is insert-only: a second device cannot overwrite a catalog
+        // that another device has already initialized.
+        if (isAdminAuthenticated && hasExistingCatalogData && localCatalog.length > 0) {
+          const bootstrapResponse = await fetch('/api/admin/catalog', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ catalog: localCatalog }),
+          });
+          if (bootstrapResponse.ok) {
+            setCloudCatalogReady(true);
+          } else if (bootstrapResponse.status === 409) {
+            const latestResponse = await fetch('/api/admin/catalog', { cache: 'no-store' });
+            const latest = await latestResponse.json();
+            if (Array.isArray(latest.catalog)) {
+              await saveCatalogToIndexedDB(latest.catalog);
+              if (!cancelled) setHeroes(latest.catalog);
+              setCloudCatalogReady(true);
+            }
+          }
+        }
       } catch (error) {
-        // Retain compatibility with the old catalog if IndexedDB is unavailable.
+        // Keep the local catalog available if the cloud is temporarily unreachable.
         try {
-          const saved = localStorage.getItem(CATALOG_STORAGE_KEY);
-          const parsed = saved ? JSON.parse(saved) : null;
-          if (!cancelled && Array.isArray(parsed) && parsed.length) {
-            setHeroes(parsed);
+          const indexedCatalog = await loadCatalogFromIndexedDB();
+          if (!cancelled && Array.isArray(indexedCatalog) && indexedCatalog.length) {
+            setHeroes(indexedCatalog);
           }
         } catch {
           // Start with the default catalog.
         }
-        if (!cancelled) {
-          notify('เปิดพื้นที่จัดเก็บรูปภาพไม่สำเร็จ กรุณาลองใช้เบราว์เซอร์อื่น');
-        }
+        if (!cancelled) notify('เชื่อมต่อคลังกลางไม่สำเร็จ กำลังใช้ข้อมูลในเครื่องนี้ชั่วคราว');
       } finally {
         if (!cancelled) setIsCatalogLoaded(true);
       }
     };
 
+    setCloudCatalogReady(false);
     loadCatalog();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    return () => { cancelled = true; };
+  }, [isAdminAuthenticated]);
 
   useEffect(() => {
     if (!isCatalogLoaded) return;
@@ -139,6 +185,25 @@ export function App() {
       notify('บันทึกข้อมูลไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม กรุณาสำรองข้อมูล JSON');
     });
   }, [heroes, isCatalogLoaded]);
+
+  useEffect(() => {
+    if (!isCatalogLoaded || !cloudCatalogReady || !isAdminAuthenticated) return;
+    const controller = new AbortController();
+    fetch('/api/admin/catalog', {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ catalog: heroes }),
+      signal: controller.signal,
+    }).then((response) => {
+      if (!response.ok) throw new Error('Cloud catalog save failed');
+    }).catch((error) => {
+      if (error.name !== 'AbortError') {
+        notify('บันทึกคลังกลางไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ');
+      }
+    });
+    return () => controller.abort();
+  }, [heroes, isCatalogLoaded, cloudCatalogReady, isAdminAuthenticated]);
 
   const heroesById = useMemo(() => {
     const map = {};
