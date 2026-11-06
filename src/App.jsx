@@ -215,7 +215,7 @@ export function App() {
   };
 
   const handleAddSkin = (heroId, { name, image }) => {
-    const skinId = `${heroId}-skin-${Date.now().toString().slice(-5)}`;
+    const skinId = `${heroId}-skin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
     const newSkin = { id: skinId, name, image: image || '' };
     setHeroes((prev) =>
       prev.map((h) =>
