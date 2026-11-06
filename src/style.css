@@ -711,7 +711,7 @@ button {
 
 .quickSkinControls {
   display: grid;
-  grid-template-columns: 1.3fr 0.9fr 1.4fr auto auto;
+  grid-template-columns: 1.2fr 1.2fr auto auto;
   gap: 8px;
   align-items: center;
 }
@@ -1981,7 +1981,7 @@ button {
 
 .addSkinInputs {
   display: grid;
-  grid-template-columns: 1.2fr 0.9fr 1.3fr auto auto;
+  grid-template-columns: 1.2fr 1.3fr auto auto;
   gap: 8px;
   align-items: center;
 }
