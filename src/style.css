@@ -2286,7 +2286,7 @@ footer span {
 
 .seamlessSkinTile {
   width: 100%;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 330 / 540;
   margin: 0;
   padding: 0;
   border: 0;
@@ -2562,7 +2562,7 @@ footer span {
 .visualArrangeTile {
   position: relative;
   width: 100%;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 330 / 540;
   overflow: hidden;
   cursor: pointer;
   user-select: none;
@@ -3144,7 +3144,7 @@ footer span {
 .nestedSkinArt {
   position: relative;
   width: 100%;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 330 / 540;
   border-radius: 9px;
   overflow: hidden;
   display: grid;
@@ -3363,7 +3363,7 @@ footer span {
 .sortskinBoardTile {
   position: relative;
   width: 100%;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 330 / 540;
   border-radius: 10px;
   overflow: hidden;
   cursor: grab;

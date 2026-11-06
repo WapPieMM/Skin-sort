@@ -936,8 +936,8 @@ export function App() {
       const cols = Math.max(1, Math.min(20, Number(layout?.columns) || 6));
       const actualCols = Math.min(cols, tiles.length);
       const rows = Math.ceil(tiles.length / cols);
-      const tileWidth = 360;
-      const tileHeight = 540; // 2:3 aspect ratio
+      const tileWidth = 330;
+      const tileHeight = 540; // 330 x 540 aspect ratio (11:18)
 
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, actualCols * tileWidth);
