@@ -3342,22 +3342,40 @@ footer span {
   margin: 10px 16px 0;
 }
 
-/* Live Board Canvas & Interactive Tiles */
+/* Live Board Canvas & Interactive Tiles (Matches IMG_0434) */
 .sortskinLiveBoardCanvasWrap {
-  padding: 14px 16px 18px;
+  padding: 20px 22px 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  background: #ffffff;
+  flex: 1;
 }
 
-.sortskinInteractiveGrid {
-  box-shadow: 0 10px 28px rgba(136, 92, 130, 0.14);
+.sortskinPreviewGrid {
+  display: grid !important;
+  width: 100%;
+  gap: 10px;
+  align-items: start;
+  justify-content: start;
 }
 
 .sortskinBoardTile {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 10px;
+  overflow: hidden;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+  box-shadow: 0 3px 10px rgba(72, 42, 70, 0.12);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.sortskinBoardTile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(72, 42, 70, 0.18);
 }
 
 .sortskinBoardTile.dragging {
@@ -3380,7 +3398,7 @@ footer span {
   height: 22px;
   padding: 0 6px;
   border-radius: 99px;
-  background: rgba(28, 22, 32, 0.78);
+  background: rgba(24, 20, 28, 0.82);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -3389,7 +3407,7 @@ footer span {
   justify-content: center;
   touch-action: none;
   cursor: grab;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
 }
 
 /* Top-Right Circular Remove Button (×) matching Screenshot */
@@ -3401,9 +3419,9 @@ footer span {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: rgba(28, 22, 32, 0.78);
+  background: rgba(24, 20, 28, 0.82);
   color: #fff;
-  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  border: 1.5px solid rgba(255, 255, 255, 0.78);
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
@@ -3451,8 +3469,23 @@ footer span {
   padding: 8px 12px;
 }
 
+/* Allow collapsing the Hero sidebar on iPad/Desktop too to view full-width board */
+.mobileCollapseToggleBtn {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sortskinTwoPaneLayout:has(.sortskinSidebar.collapsedMobile) {
+  grid-template-columns: 1fr;
+}
+
+.sortskinSidebar.collapsedMobile {
+  border-right: 0;
+  border-bottom: 1px solid #eeddec;
+}
+
 /* ============================================================
-   MOBILE LAYOUT: Keep Hero/Skin Category Drawer Compact on Top
+   TABLET & MOBILE LAYOUT: Keep Hero/Skin Category Drawer Compact
    so the Live Preview Board is ALWAYS visible right below!
    ============================================================ */
 @media (max-width: 960px) {
@@ -3467,19 +3500,18 @@ footer span {
     max-height: none;
   }
 
-  .mobileCollapseToggleBtn {
-    display: inline-flex;
-    align-items: center;
-  }
-
-  /* Compact scrollable height on mobile so Live Preview below is always visible on screen! */
+  /* Compact scrollable height on mobile/tablet so Live Preview below is always visible on screen! */
   .sortskinHeroList {
     max-height: 195px;
   }
 
   .sortskinNestedSkinGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     max-height: 215px;
+  }
+
+  .sortskinPreviewGrid {
+    gap: 8px;
   }
 }
 
@@ -3499,7 +3531,15 @@ footer span {
   }
 
   .sortskinLiveBoardCanvasWrap {
-    padding: 8px 6px 14px;
+    padding: 12px 10px 16px;
+  }
+
+  .sortskinPreviewGrid {
+    gap: 5px;
+  }
+
+  .sortskinBoardTile {
+    border-radius: 6px;
   }
 
   .boardTileNumBadge,
@@ -3519,6 +3559,7 @@ footer span {
     right: 3px;
   }
 }
+
 
 
 
