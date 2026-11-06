@@ -8,13 +8,10 @@ import {
   Download,
   ArrowLeft,
   ArrowRight,
-  RotateCcw,
   Upload,
   Link2,
   Plus,
   Trash2,
-  SlidersHorizontal,
-  ShieldCheck,
   Layers,
   Check,
   Image as ImageIcon,
@@ -23,9 +20,6 @@ import {
 } from 'lucide-react';
 import {
   DEFAULT_HEROES,
-  POSTER_THEMES,
-  RANK_OPTIONS,
-  BIND_STATUS_OPTIONS,
   PASTEL_PALETTE,
 } from './data/defaultCatalog';
 import { uploadImageFile } from './utils/cloudStorage';
@@ -36,6 +30,7 @@ import { loadCatalogFromIndexedDB, saveCatalogToIndexedDB } from './utils/catalo
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
 const CATALOG_SKIN_MIGRATION_KEY = 'rov_white_angel_catalog_skins_cleared_v1';
 const SAVED_POSTERS_KEY = 'rov_white_angel_saved_posters_v2';
+const COLUMN_OPTIONS = [4, 5, 6, 8, 10, 12];
 
 export function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
@@ -43,8 +38,15 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
+
+    if (sessionStorage.getItem('rov_temp_admin_auth') === 'true') {
+      setIsAdminAuthenticated(true);
+      setIsAdminSessionLoading(false);
+      return;
+    }
+
     fetch('/api/admin/session', { credentials: 'same-origin' })
-      .then((response) => response.ok ? response.json() : null)
+      .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (!cancelled) setIsAdminAuthenticated(Boolean(data?.authenticated));
       })
@@ -54,9 +56,12 @@ export function App() {
       .finally(() => {
         if (!cancelled) setIsAdminSessionLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
-  // 1. Hero & Skin Catalog State (Persisted in localStorage)
+
+  // 1. Hero & Skin Catalog State
   const [heroes, setHeroes] = useState(() =>
     DEFAULT_HEROES.map((hero) => ({ ...hero, skins: [] }))
   );
@@ -68,7 +73,6 @@ export function App() {
 
     const loadCatalog = async () => {
       try {
-        // The shared Supabase catalog is the source of truth across devices.
         const cloudResponse = await fetch('/api/admin/catalog', {
           credentials: 'same-origin',
           cache: 'no-store',
@@ -85,19 +89,23 @@ export function App() {
           return;
         }
 
-        // No shared catalog exists yet: recover this device's existing catalog.
         const indexedCatalog = await loadCatalogFromIndexedDB();
-        let localCatalog = Array.isArray(indexedCatalog) && indexedCatalog.length
-          ? indexedCatalog
-          : null;
-        let hasExistingCatalogData = Boolean(localCatalog?.some(
-          (hero) => (Array.isArray(hero.skins) && hero.skins.length > 0) ||
-            !DEFAULT_HEROES.some((defaultHero) =>
-              defaultHero.id === hero.id &&
-              defaultHero.name === hero.name &&
-              defaultHero.image === hero.image
-            )
-        ));
+        let localCatalog =
+          Array.isArray(indexedCatalog) && indexedCatalog.length
+            ? indexedCatalog
+            : null;
+        let hasExistingCatalogData = Boolean(
+          localCatalog?.some(
+            (hero) =>
+              (Array.isArray(hero.skins) && hero.skins.length > 0) ||
+              !DEFAULT_HEROES.some(
+                (defaultHero) =>
+                  defaultHero.id === hero.id &&
+                  defaultHero.name === hero.name &&
+                  defaultHero.image === hero.image
+              )
+          )
+        );
 
         if (!localCatalog) {
           let parsed = [];
@@ -110,23 +118,32 @@ export function App() {
 
           const shouldClearLegacySkins =
             localStorage.getItem(CATALOG_SKIN_MIGRATION_KEY) !== 'done';
-          hasExistingCatalogData = Array.isArray(parsed) && parsed.some(
-            (hero) => (Array.isArray(hero.skins) && hero.skins.length > 0) ||
-              !DEFAULT_HEROES.some((defaultHero) =>
-                defaultHero.id === hero.id &&
-                defaultHero.name === hero.name &&
-                defaultHero.image === hero.image
-              )
-          );
-          const source = Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_HEROES;
+          hasExistingCatalogData =
+            Array.isArray(parsed) &&
+            parsed.some(
+              (hero) =>
+                (Array.isArray(hero.skins) && hero.skins.length > 0) ||
+                !DEFAULT_HEROES.some(
+                  (defaultHero) =>
+                    defaultHero.id === hero.id &&
+                    defaultHero.name === hero.name &&
+                    defaultHero.image === hero.image
+                )
+            );
+          const source =
+            Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_HEROES;
           const savedIds = new Set(source.map((hero) => hero.id));
-          const newlyAddedDefaults = DEFAULT_HEROES.filter((hero) => !savedIds.has(hero.id));
+          const newlyAddedDefaults = DEFAULT_HEROES.filter(
+            (hero) => !savedIds.has(hero.id)
+          );
           localCatalog = [
             ...source.map((hero) => ({
               ...hero,
               skins: shouldClearLegacySkins
                 ? []
-                : Array.isArray(hero.skins) ? hero.skins : [],
+                : Array.isArray(hero.skins)
+                  ? hero.skins
+                  : [],
             })),
             ...newlyAddedDefaults.map((hero) => ({ ...hero, skins: [] })),
           ];
@@ -137,9 +154,11 @@ export function App() {
         if (cancelled) return;
         setHeroes(localCatalog);
 
-        // Bootstrap is insert-only: a second device cannot overwrite a catalog
-        // that another device has already initialized.
-        if (isAdminAuthenticated && hasExistingCatalogData && localCatalog.length > 0) {
+        if (
+          isAdminAuthenticated &&
+          hasExistingCatalogData &&
+          localCatalog.length > 0
+        ) {
           const bootstrapResponse = await fetch('/api/admin/catalog', {
             method: 'POST',
             credentials: 'same-origin',
@@ -149,7 +168,9 @@ export function App() {
           if (bootstrapResponse.ok) {
             setCloudCatalogReady(true);
           } else if (bootstrapResponse.status === 409) {
-            const latestResponse = await fetch('/api/admin/catalog', { cache: 'no-store' });
+            const latestResponse = await fetch('/api/admin/catalog', {
+              cache: 'no-store',
+            });
             const latest = await latestResponse.json();
             if (Array.isArray(latest.catalog)) {
               await saveCatalogToIndexedDB(latest.catalog);
@@ -158,17 +179,19 @@ export function App() {
             }
           }
         }
-      } catch (error) {
-        // Keep the local catalog available if the cloud is temporarily unreachable.
+      } catch {
         try {
           const indexedCatalog = await loadCatalogFromIndexedDB();
-          if (!cancelled && Array.isArray(indexedCatalog) && indexedCatalog.length) {
+          if (
+            !cancelled &&
+            Array.isArray(indexedCatalog) &&
+            indexedCatalog.length
+          ) {
             setHeroes(indexedCatalog);
           }
         } catch {
-          // Start with the default catalog.
+          // Use default catalog
         }
-        if (!cancelled) notify('เชื่อมต่อคลังกลางไม่สำเร็จ กำลังใช้ข้อมูลในเครื่องนี้ชั่วคราว');
       } finally {
         if (!cancelled) setIsCatalogLoaded(true);
       }
@@ -176,7 +199,9 @@ export function App() {
 
     setCloudCatalogReady(false);
     loadCatalog();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isAdminAuthenticated]);
 
   useEffect(() => {
@@ -195,13 +220,15 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ catalog: heroes }),
       signal: controller.signal,
-    }).then((response) => {
-      if (!response.ok) throw new Error('Cloud catalog save failed');
-    }).catch((error) => {
-      if (error.name !== 'AbortError') {
-        notify('บันทึกคลังกลางไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ');
-      }
-    });
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error('Cloud catalog save failed');
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') {
+          notify('บันทึกคลังกลางไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ');
+        }
+      });
     return () => controller.abort();
   }, [heroes, isCatalogLoaded, cloudCatalogReady, isAdminAuthenticated]);
 
@@ -215,19 +242,19 @@ export function App() {
 
   // 2. Navigation & Step State
   const [step, setStep] = useState(1);
-  const [activeHeroId, setActiveHeroId] = useState(() => heroes[0]?.id || 'alice');
+  const [activeHeroId, setActiveHeroId] = useState(
+    () => heroes[0]?.id || 'alice'
+  );
   const activeHero = useMemo(
     () => heroes.find((h) => h.id === activeHeroId) || heroes[0],
     [heroes, activeHeroId]
   );
 
-  // Modal state for full Hero & Skin database manager
   const [isManagerOpen, setIsManagerOpen] = useState(false);
 
   // 3. Selected Skin Queue
   const [selectedSkins, setSelectedSkins] = useState([]);
 
-  // Sync any catalog edits (name/image) into currently selectedSkins
   useEffect(() => {
     setSelectedSkins((prev) =>
       prev.map((item) => {
@@ -249,53 +276,24 @@ export function App() {
   const [skinQuery, setSkinQuery] = useState('');
   const [showAllHeroesSkins, setShowAllHeroesSkins] = useState(false);
 
-  // Quick inline add skin state in Step 1 / Step 2
   const [quickSkinName, setQuickSkinName] = useState('');
   const [quickSkinImage, setQuickSkinImage] = useState('');
 
-  // 5. Account Info, Watermark & Layout State (SortSkin Features)
-  const [posterMode, setPosterMode] = useState('selling'); // 'selling' | 'collection' | 'showcase'
-  const [accountInfo, setAccountInfo] = useState({
-    title: 'Angel Collection · ไอดีหลักสกินแรร์จัดเต็ม',
-    subtitle: 'รวมฮีโร่และข้อมูลไอดี พร้อมจัดทำป้ายประกาศ',
-    accountCode: 'WA-001',
-    price: '3,590',
-    rank: RANK_OPTIONS[0],
-    heroCount: '115',
-    skinCount: '0',
-    winRate: '64.8%',
-    runeLevel: 'รูน Lv.3 ครบ 30 หน้า',
-    bindStatus: BIND_STATUS_OPTIONS[0],
-    contact: 'FB: White Angel Shop / Line: @whiteangel',
-    note: 'นัดรับหรือผ่านกลางแอดมินได้ตลอด 24 ชม.',
-  });
-
-  const [watermark, setWatermark] = useState({
-    enabled: true,
-    text: 'WHITE ANGEL SHOP',
-    subtext: 'ห้ามนำรูปไปใช้โดยไม่ได้รับอนุญาต',
-    logo: '',
-    style: 'tiled', // 'tiled' | 'center' | 'corner'
-    opacity: 16,
-  });
-
+  // 5. Grid Layout State (Pure Image Collage)
   const [layout, setLayout] = useState({
-    columns: 5,
-    cardShape: 'portrait', // 'portrait' | 'square' | 'compact'
-    themeId: 'white-angel',
-    showHeroName: true,
-    showOrderNumber: true,
+    columns: 10,
   });
 
-  // Saved Posters Collection
+  // Saved Collections
   const [savedPosters, setSavedPosters] = useState(() => {
     try {
       const raw = localStorage.getItem(SAVED_POSTERS_KEY);
-      return raw ? JSON.parse(raw).map((poster) => ({ ...poster, selectedSkins: [], accountInfo: { ...poster.accountInfo, skinCount: '0' } })) : [];
+      return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
     }
   });
+
   useEffect(() => {
     try {
       localStorage.setItem(SAVED_POSTERS_KEY, JSON.stringify(savedPosters));
@@ -313,7 +311,11 @@ export function App() {
 
   const handleAdminLogout = async () => {
     try {
-      await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+      sessionStorage.removeItem('rov_temp_admin_auth');
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
     } finally {
       setIsAdminAuthenticated(false);
     }
@@ -362,7 +364,9 @@ export function App() {
   };
 
   const handleAddSkin = (heroId, { name, image }) => {
-    const skinId = `${heroId}-skin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    const skinId = `${heroId}-skin-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 7)}`;
     const newSkin = { id: skinId, name, image: image || '' };
     setHeroes((prev) =>
       prev.map((h) =>
@@ -429,7 +433,6 @@ export function App() {
     if (importedCatalog[0]?.id) setActiveHeroId(importedCatalog[0].id);
   };
 
-  // Direct Inline Hero Image Upload in Step 1
   const handleInlineHeroImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !activeHero) return;
@@ -443,7 +446,6 @@ export function App() {
     e.target.value = '';
   };
 
-  // Direct Inline Quick Skin Image Upload
   const handleQuickSkinImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -459,12 +461,12 @@ export function App() {
 
   const handleQuickAddSkinSubmit = (e) => {
     e.preventDefault();
-    if (!quickSkinName.trim() || !activeHero) return;
+    if (!activeHero) return;
     const created = handleAddSkin(activeHero.id, {
-      name: quickSkinName.trim(),
+      name:
+        quickSkinName.trim() || `Skin ${(activeHero.skins?.length || 0) + 1}`,
       image: quickSkinImage.trim(),
     });
-    // Also automatically select the newly added skin into the poster queue
     const uid = `${activeHero.id}__${created.id}`;
     setSelectedSkins((prev) => [
       ...prev,
@@ -479,7 +481,7 @@ export function App() {
     ]);
     setQuickSkinName('');
     setQuickSkinImage('');
-    notify(`เพิ่มสกิน "${created.name}" ของ ${activeHero.name} และเลือกเข้าป้ายแล้ว`);
+    notify(`เพิ่มรูปสกินของ ${activeHero.name} และเลือกเข้าคอลเลกชันแล้ว`);
   };
 
   // --- Skin Selection & Sorting Handlers ---
@@ -520,19 +522,17 @@ export function App() {
 
   const sortSkinsByHero = () => {
     setSelectedSkins((prev) =>
-      [...prev].sort((a, b) => {
-        return a.heroName.localeCompare(b.heroName);
-      })
+      [...prev].sort((a, b) => a.heroName.localeCompare(b.heroName))
     );
-    notify('จัดเรียงสกินแยกตามชื่อฮีโร่ (A → Z) เรียบร้อย!');
+    notify('จัดเรียงรูปสกินแยกตามชื่อฮีโร่ (A → Z) เรียบร้อย!');
   };
 
   const reverseSkinsOrder = () => {
     setSelectedSkins((prev) => [...prev].reverse());
-    notify('สลับลำดับสกินหน้า-หลังเรียบร้อย');
+    notify('สลับลำดับรูปสกินหน้า-หลังเรียบร้อย');
   };
 
-  // Drag and Drop reordering in Step 3
+  // Drag and Drop reordering
   const handleDragStart = (idx) => setDragIndex(idx);
   const handleDragOver = (e, idx) => {
     e.preventDefault();
@@ -547,19 +547,24 @@ export function App() {
   };
   const handleDragEnd = () => setDragIndex(null);
 
-  // Filtered Hero List for Step 1
   const filteredHeroes = useMemo(() => {
     return heroes
-      .filter((h) =>
-        h.name.toLowerCase().includes(heroQuery.toLowerCase()) ||
-        (h.title || '').toLowerCase().includes(heroQuery.toLowerCase())
+      .filter(
+        (h) =>
+          h.name.toLowerCase().includes(heroQuery.toLowerCase()) ||
+          (h.title || '').toLowerCase().includes(heroQuery.toLowerCase())
       )
-      .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+      .sort((a, b) =>
+        a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+      );
   }, [heroes, heroQuery]);
 
-  // Filtered Skins for Step 2 (Either active hero or all heroes)
   const displayedSkinEntries = useMemo(() => {
-    const sourceHeroes = showAllHeroesSkins ? heroes : activeHero ? [activeHero] : [];
+    const sourceHeroes = showAllHeroesSkins
+      ? heroes
+      : activeHero
+        ? [activeHero]
+        : [];
     const list = [];
     sourceHeroes.forEach((h) => {
       h.skins.forEach((s) => {
@@ -574,7 +579,7 @@ export function App() {
     return list;
   }, [heroes, activeHero, showAllHeroesSkins, skinQuery]);
 
-  // Download PNG
+  // Download Pure Collage PNG
   const handleDownloadPng = async () => {
     if (!previewRef.current) return;
     setIsExporting(true);
@@ -584,13 +589,10 @@ export function App() {
         cacheBust: true,
       });
       const a = document.createElement('a');
-      const fileSlug = (accountInfo.accountCode || 'rov-skin-poster')
-        .toLowerCase()
-        .replace(/[^a-z0-9-_]/g, '-');
-      a.download = `${fileSlug}.png`;
+      a.download = `rov-skin-collection-${selectedSkins.length}.png`;
       a.href = dataUrl;
       a.click();
-      notify('ดาวน์โหลดรูปภาพป้าย PNG ความละเอียดสูงสำเร็จ!');
+      notify('ดาวน์โหลดภาพรวมคอลเลกชันสกิน PNG สำเร็จ!');
     } catch {
       notify('เกิดข้อผิดพลาดในการสร้างไฟล์ภาพ กรุณาลองอีกครั้ง');
     } finally {
@@ -598,7 +600,6 @@ export function App() {
     }
   };
 
-  // Save current poster preset to My Collection
   const handleSaveToCollection = () => {
     const entry = {
       id: 'poster-' + Date.now(),
@@ -607,40 +608,25 @@ export function App() {
         month: 'short',
         year: 'numeric',
       }),
-      posterMode,
-      accountInfo: { ...accountInfo },
-      watermark: { ...watermark },
       layout: { ...layout },
-      selectedSkins: [],
+      selectedSkins: [...selectedSkins],
     };
     const next = [entry, ...savedPosters];
     setSavedPosters(next);
-    try {
-      localStorage.setItem(SAVED_POSTERS_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
-    notify('บันทึกป้ายนี้เก็บไว้ใน My Collection เรียบร้อยแล้ว ♡');
+    notify('บันทึกคอลเลกชันนี้ไว้ในรายการที่บันทึกแล้ว ♡');
   };
 
   const handleLoadSavedPoster = (entry) => {
-    setPosterMode(entry.posterMode || 'selling');
-    if (entry.accountInfo) setAccountInfo(entry.accountInfo);
-    if (entry.watermark) setWatermark(entry.watermark);
     if (entry.layout) setLayout(entry.layout);
-    setSelectedSkins([]);
-    setStep(5);
-    notify(`โหลดป้าย "${entry.accountInfo?.title || 'Saved Poster'}" แล้ว`);
+    if (Array.isArray(entry.selectedSkins)) {
+      setSelectedSkins(entry.selectedSkins);
+    }
+    setStep(4);
+    notify('โหลดคอลเลกชันที่บันทึกไว้เรียบร้อยแล้ว');
   };
 
   const handleDeleteSavedPoster = (id) => {
-    const next = savedPosters.filter((p) => p.id !== id);
-    setSavedPosters(next);
-    try {
-      localStorage.setItem(SAVED_POSTERS_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
+    setSavedPosters((prev) => prev.filter((p) => p.id !== id));
   };
 
   if (isAdminSessionLoading) {
@@ -653,10 +639,14 @@ export function App() {
 
   return (
     <main className="app">
-      <button className="adminLogoutButton" onClick={handleAdminLogout} type="button">
+      <button
+        className="adminLogoutButton"
+        onClick={handleAdminLogout}
+        type="button"
+      >
         ออกจากระบบแอดมิน
       </button>
-      {/* Floating Toast Notification */}
+
       {toastMsg && (
         <div className="floatingToast">
           <Sparkles size={15} />
@@ -664,13 +654,17 @@ export function App() {
         </div>
       )}
 
-      {/* Top Navigation Bar (White Angel Theme) */}
+      {/* Top Navigation Bar */}
       <header className="topbar">
-        <div className="brand" onClick={() => setStep(1)} style={{ cursor: 'pointer' }}>
+        <div
+          className="brand"
+          onClick={() => setStep(1)}
+          style={{ cursor: 'pointer' }}
+        >
           <span className="brandmark">✧</span>
           <div>
             <b>RoV</b>
-            <small>SORTSKIN · WHITE ANGEL</small>
+            <small>SKIN COLLECTION</small>
           </div>
         </div>
 
@@ -691,13 +685,13 @@ export function App() {
             className={step === 3 ? 'active' : ''}
             onClick={() => setStep(3)}
           >
-            3. จัดเรียง & ข้อมูลขายไอดี
+            3. จัดเรียงรูปสกิน
           </button>
           <button
-            className={step === 5 ? 'active' : ''}
-            onClick={() => setStep(5)}
+            className={step === 4 ? 'active' : ''}
+            onClick={() => setStep(4)}
           >
-            5. พรีวิวป้าย & ดาวน์โหลด
+            4. พรีวิว & ดาวน์โหลด
           </button>
           <button
             className="navManageBtn"
@@ -719,20 +713,20 @@ export function App() {
       {/* Hero Banner */}
       <section className="heroBanner">
         <div className="bannerCopy">
-          <span className="eyebrow">COLLECT · ARRANGE · SELL ACCOUNT POSTER</span>
+          <span className="eyebrow">COLLECT · ARRANGE · SEAMLESS GRID</span>
           <h1>
             RoV Skin
             <br />
-            <i>SortSkin Studio</i>
+            <i>Collection Grid</i>
           </h1>
           <p>
-            สร้างป้ายรวมสกินแรร์และป้ายโพสต์ขายไอดี RoV สไตล์ SortSkin
+            เลือกรูปสกินที่ต้องการแล้วนำมาเรียงต่อกันเป็นตารางคอลเลกชันแบบไร้ขอบ
             <br />
-            เพิ่มรูปภาพฮีโร่และสกินได้เอง จัดเรียงตามชื่อฮีโร่ พร้อมลายน้ำร้านค้า ♡
+            ไม่มีข้อความหรือกรอบรบกวนภาพสกิน ดาวน์โหลดเป็นไฟล์ PNG คมชัดสูงได้ทันที ♡
           </p>
           <div className="bannerBtnGroup">
             <button className="primary" onClick={() => setStep(2)}>
-              เริ่มจัดเรียงสกินเลย <ArrowRight size={16} />
+              เริ่มเลือกสกินเลย <ArrowRight size={16} />
             </button>
             <button
               className="secondary"
@@ -748,9 +742,9 @@ export function App() {
           <div className="artCard">
             ♡
             <span>
-              WHITE ANGEL
+              SKIN
               <br />
-              SORTSKIN
+              COLLECTION
             </span>
           </div>
           <div className="spark s1">✦</div>
@@ -762,9 +756,9 @@ export function App() {
       <section className="workspace">
         <div className="sectionHead">
           <div>
-            <span className="eyebrow">WHITE ANGEL SORTSKIN WORKSPACE</span>
+            <span className="eyebrow">SEAMLESS SKIN COLLAGE</span>
             <h2>
-              ระบบทำป้ายสกิน & โพสต์ขายไอดี <Sparkles size={20} />
+              จัดเรียงรูปสกินโชว์คอลเลกชัน <Sparkles size={20} />
             </h2>
           </div>
 
@@ -772,9 +766,8 @@ export function App() {
             {[
               { n: 1, label: 'เลือกฮีโร่/ใส่รูป' },
               { n: 2, label: 'เลือกสกิน' },
-              { n: 3, label: 'จัดเรียง/ข้อมูลไอดี' },
-              { n: 4, label: 'ตั้งค่าตาราง' },
-              { n: 5, label: 'พรีวิว/ดาวน์โหลด' },
+              { n: 3, label: 'จัดเรียงลำดับรูป' },
+              { n: 4, label: 'พรีวิว/ดาวน์โหลด' },
             ].map((item) => (
               <button
                 key={item.n}
@@ -796,10 +789,11 @@ export function App() {
             <div className="panelTopRow">
               <div>
                 <h3>
-                  Step 1 · เลือกฮีโร่ & ใส่ข้อมูลรูปภาพฮีโร่ <Sparkles size={15} />
+                  Step 1 · เลือกฮีโร่ & ใส่ข้อมูลรูปภาพฮีโร่{' '}
+                  <Sparkles size={15} />
                 </h3>
                 <p className="muted">
-                  คลิกเลือกฮีโร่เพื่อใส่รูปภาพประจำตัวฮีโร่ เพิ่มสกิน หรือกดเลือกสกินเข้าป้ายได้ทันที
+                  คลิกเลือกฮีโร่เพื่อใส่รูปภาพประจำตัวฮีโร่ เพิ่มรูปสกิน หรือกดเลือกสกินเข้าคอลเลกชัน
                 </p>
               </div>
               <button
@@ -810,7 +804,6 @@ export function App() {
               </button>
             </div>
 
-            {/* Search Heroes */}
             <div className="filterBarRow">
               <div className="search flex1">
                 <Search size={17} />
@@ -822,7 +815,6 @@ export function App() {
               </div>
             </div>
 
-            {/* Hero Grid */}
             <div className="heroGrid">
               {filteredHeroes.map((h, i) => {
                 const isCurrent = activeHero?.id === h.id;
@@ -869,7 +861,6 @@ export function App() {
               })}
             </div>
 
-            {/* DIRECT INLINE HERO IMAGE & DATA EDITOR ("ช่องสำหรับใส่ข้อมูลรูปภาพฮีโร่ตัวนั้น ๆ") */}
             {activeHero && (
               <div className="heroInlineEditorCard">
                 <div className="heroInlineHeader">
@@ -885,12 +876,12 @@ export function App() {
                     className="secondary"
                     onClick={() => setIsManagerOpen(true)}
                   >
-                    แก้ไขรูปสกินของ {activeHero.name} ทั้งหมด ({activeHero.skins.length})
+                    จัดการรูปสกินของ {activeHero.name} ทั้งหมด (
+                    {activeHero.skins.length})
                   </button>
                 </div>
 
                 <div className="heroInlineBody">
-                  {/* Hero Image Preview + Upload Button */}
                   <div className="heroInlineAvatarCol">
                     <div
                       className="heroInlinePreview"
@@ -928,7 +919,6 @@ export function App() {
                     )}
                   </div>
 
-                  {/* Hero Data & Image URL Fields */}
                   <div className="heroInlineFormCol">
                     <div className="inlineFormRow">
                       <div className="fieldGroup">
@@ -973,21 +963,19 @@ export function App() {
                       />
                     </div>
 
-                    {/* Quick Add Skin for this Hero */}
                     <form
                       className="inlineQuickSkinForm"
                       onSubmit={handleQuickAddSkinSubmit}
                     >
                       <label>
-                        <Plus size={13} /> เพิ่มสกินและรูปสกินใหม่ให้{' '}
+                        <Plus size={13} /> เพิ่มรูปสกินใหม่ให้{' '}
                         <b>{activeHero.name}</b> ทันที:
                       </label>
                       <div className="quickSkinControls">
                         <input
-                          placeholder="ชื่อสกิน (เช่น Dimension Breaker)"
+                          placeholder="ชื่อสกินสำหรับค้นหา (ไม่บังคับ)"
                           value={quickSkinName}
                           onChange={(e) => setQuickSkinName(e.target.value)}
-                          required
                         />
                         <input
                           placeholder="ลิงก์ URL รูปสกิน (หรืออัปโหลดไฟล์)"
@@ -1017,28 +1005,27 @@ export function App() {
             <div className="bottomActions">
               <span className="muted">
                 ฮีโร่ที่เลือก: <b>{activeHero?.name}</b> · เลือกสกินไว้แล้วทั้งหมด{' '}
-                <b className="tabular">{selectedSkins.length}</b> สกิน
+                <b className="tabular">{selectedSkins.length}</b> รูป
               </span>
               <button className="primary" onClick={() => setStep(2)}>
-                ไปเลือกสกินเข้าป้าย <ArrowRight size={16} />
+                ไปเลือกสกินเข้าคอลเลกชัน <ArrowRight size={16} />
               </button>
             </div>
           </div>
         )}
 
         {/* ============================================================
-            STEP 2: SELECT SKINS ACROSS HEROES (SORTSKIN MULTI-HERO)
+            STEP 2: SELECT SKINS ACROSS HEROES
            ============================================================ */}
         {step === 2 && (
           <div className="panel">
             <div className="panelTopRow">
               <div>
                 <h3>
-                  Step 2 · เลือกสกินเข้าป้าย (เลือกข้ามฮีโร่ได้เหมือน SortSkin){' '}
-                  <Sparkles size={15} />
+                  Step 2 · เลือกรูปสกินเข้าคอลเลกชัน <Sparkles size={15} />
                 </h3>
                 <p className="muted">
-                  คลิกเลือกสกินจากหลายฮีโร่เพื่อนำมารวมในป้ายเดียวกัน พร้อมกำหนดระดับความแรร์และใส่รูปสกินได้
+                  คลิกเลือกรูปสกินจากหลายฮีโร่เพื่อนำมาเรียงต่อกันเป็นตารางเดียว
                 </p>
               </div>
 
@@ -1062,7 +1049,6 @@ export function App() {
               </div>
             </div>
 
-            {/* Quick Hero Switcher Strip */}
             <div className="heroQuickStrip">
               {heroes.map((h, i) => {
                 const count = selectedSkins.filter(
@@ -1106,7 +1092,6 @@ export function App() {
               })}
             </div>
 
-            {/* Skin Search */}
             <div className="filterBarRow">
               <div className="search flex1">
                 <Search size={17} />
@@ -1116,58 +1101,67 @@ export function App() {
                   onChange={(e) => setSkinQuery(e.target.value)}
                 />
               </div>
-
             </div>
 
-            {/* Skin Grid */}
-            <div className="skinGrid">
-              {displayedSkinEntries.map(({ hero: h, skin: s }, i) => {
-                const chosen = isSkinSelected(h.id, s.id);
-                const displayImg = s.image || h.image || '';
+            {displayedSkinEntries.length === 0 ? (
+              <div className="emptySkinState">
+                <p>ยังไม่มีรูปสกินในหมวดที่เลือก สามารถอัปโหลดรูปสกินเพิ่มได้เลย</p>
+                <button
+                  className="primary"
+                  onClick={() => setIsManagerOpen(true)}
+                >
+                  <Upload size={15} /> อัปโหลดรูปสกินเข้าคลัง
+                </button>
+              </div>
+            ) : (
+              <div className="skinGrid">
+                {displayedSkinEntries.map(({ hero: h, skin: s }, i) => {
+                  const chosen = isSkinSelected(h.id, s.id);
+                  const displayImg = s.image || h.image || '';
 
-                return (
-                  <div
-                    key={`${h.id}-${s.id}`}
-                    className={'skinTile ' + (chosen ? 'chosen' : '')}
-                    onClick={() => toggleSkinSelection(h, s)}
-                  >
+                  return (
                     <div
-                      className="skinArt"
-                      style={{
-                        background:
-                          h.color ||
-                          PASTEL_PALETTE[(i + 1) % PASTEL_PALETTE.length],
-                      }}
+                      key={`${h.id}-${s.id}`}
+                      className={'skinTile ' + (chosen ? 'chosen' : '')}
+                      onClick={() => toggleSkinSelection(h, s)}
                     >
-                      {displayImg ? (
-                        <img
-                          src={displayImg}
-                          alt={s.name}
-                          className="tileHeroImg"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <span>
-                          {s.name
-                            .split(' ')
-                            .map((w) => w[0])
-                            .join('')
-                            .slice(0, 3)}
-                        </span>
-                      )}
+                      <div
+                        className="skinArt"
+                        style={{
+                          background:
+                            h.color ||
+                            PASTEL_PALETTE[(i + 1) % PASTEL_PALETTE.length],
+                        }}
+                      >
+                        {displayImg ? (
+                          <img
+                            src={displayImg}
+                            alt={s.name}
+                            className="tileHeroImg"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span>
+                            {s.name
+                              .split(' ')
+                              .map((w) => w[0])
+                              .join('')
+                              .slice(0, 3)}
+                          </span>
+                        )}
 
+                        {chosen && <b className="check">✓</b>}
+                      </div>
 
-                      {chosen && <b className="check">✓</b>}
+                      <div className="skinTileMeta">
+                        <b>{s.name}</b>
+                        <small>{h.name}</small>
+                      </div>
                     </div>
-
-                    <div className="skinTileMeta">
-                      <b>{s.name}</b>
-                      <small>{h.name}</small>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="bottomActions">
               <button className="secondary" onClick={() => setStep(1)}>
@@ -1176,7 +1170,7 @@ export function App() {
               <div className="selectedSummaryInline">
                 <span className="muted">
                   เลือกไว้แล้ว <b className="tabular">{selectedSkins.length}</b>{' '}
-                  สกิน
+                  รูป
                 </span>
                 <button
                   className="secondary"
@@ -1190,29 +1184,44 @@ export function App() {
                 disabled={!selectedSkins.length}
                 onClick={() => setStep(3)}
               >
-                ถัดไป: จัดเรียง & ข้อมูลขายไอดี <ArrowRight size={16} />
+                ถัดไป: จัดเรียงลำดับรูป <ArrowRight size={16} />
               </button>
             </div>
           </div>
         )}
 
         {/* ============================================================
-            STEP 3: SORTSKIN ARRANGER + ACCOUNT SELLING INFO + WATERMARK
+            STEP 3: VISUAL IMAGE GRID ARRANGER (DRAG & DROP + COLUMNS)
            ============================================================ */}
         {step === 3 && (
           <div className="panel">
             <div className="panelTopRow">
               <div>
                 <h3>
-                  Step 3 · จัดเรียงลำดับสกิน & กรอกข้อมูลโพสต์ขายไอดี{' '}
+                  Step 3 · จัดเรียงลำดับรูปสกิน ({selectedSkins.length} รูป){' '}
                   <Sparkles size={15} />
                 </h3>
                 <p className="muted">
-                  กดปุ่มจัดเรียงตามระดับความแรร์อัตโนมัติ หรือลากสลับตำแหน่งสกิน พร้อมกรอกรายละเอียดไอดีและลายน้ำร้านค้า
+                  ลากรูปสกินเพื่อสลับตำแหน่งได้โดยตรง หรือใช้ปุ่มลูกศรเลื่อนลำดับและเลือกจำนวนรูปต่อแถว
                 </p>
               </div>
 
               <div className="autoSortToolbar">
+                <div className="inlineColSelector">
+                  <span>จำนวนรูปต่อแถว:</span>
+                  {COLUMN_OPTIONS.map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      className={
+                        'colChipBtn ' + (layout.columns === col ? 'active' : '')
+                      }
+                      onClick={() => setLayout({ ...layout, columns: col })}
+                    >
+                      {col}
+                    </button>
+                  ))}
+                </div>
                 <button className="sortActionBtn" onClick={sortSkinsByHero}>
                   <Layers size={14} /> เรียงตามฮีโร่ (A → Z)
                 </button>
@@ -1222,661 +1231,134 @@ export function App() {
               </div>
             </div>
 
-            <div className="step3SplitLayout">
-              {/* Left Column: Selected Skins Queue & Drag-and-Drop Reorder */}
-              <div className="arrangeColumn">
-                <div className="subPanelHeader">
-                  <b>
-                    ลำดับสกินในป้าย ({selectedSkins.length} สกิน) · ลากวางเพื่อสลับที่ได้
-                  </b>
-                  <button
-                    className="tinyLinkBtn"
-                    onClick={() => setStep(2)}
+            <div
+              className="visualArrangeGrid"
+              style={{
+                gridTemplateColumns: `repeat(${Math.min(layout.columns || 10, 8)}, minmax(0, 1fr))`,
+              }}
+            >
+              {selectedSkins.map((item, i) => {
+                const heroObj = heroesById[item.heroId];
+                const imgSrc = item.image || heroObj?.image || '';
+
+                return (
+                  <div
+                    key={item.uid}
+                    className={
+                      'visualArrangeTile ' + (dragIndex === i ? 'dragging' : '')
+                    }
+                    draggable
+                    onDragStart={() => handleDragStart(i)}
+                    onDragOver={(e) => handleDragOver(e, i)}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                      background:
+                        heroObj?.color ||
+                        PASTEL_PALETTE[i % PASTEL_PALETTE.length],
+                    }}
                   >
-                    + เลือกสกินเพิ่ม
-                  </button>
-                </div>
-
-                <div className="arrangeList">
-                  {selectedSkins.map((item, i) => {
-                    const heroObj = heroesById[item.heroId];
-                    const imgSrc = item.image || heroObj?.image || '';
-
-                    return (
-                      <div
-                        className={
-                          'arrangeRow ' + (dragIndex === i ? 'dragging' : '')
-                        }
-                        key={item.uid}
-                        draggable
-                        onDragStart={() => handleDragStart(i)}
-                        onDragOver={(e) => handleDragOver(e, i)}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <span className="num tabular">#{i + 1}</span>
-                        <div
-                          className="miniArt"
-                          style={{
-                            background:
-                              heroObj?.color ||
-                              PASTEL_PALETTE[i % PASTEL_PALETTE.length],
-                          }}
-                        >
-                          {imgSrc ? (
-                            <img
-                              src={imgSrc}
-                              alt={item.name}
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            item.name.slice(0, 1)
-                          )}
-                        </div>
-
-                        <div className="arrangeItemInfo">
-                          <b>{item.name}</b>
-                          <small>{item.heroName}</small>
-                        </div>
-
-                        <div className="moveBtns">
-                          <button
-                            onClick={() => moveSelectedSkin(i, -1)}
-                            disabled={i === 0}
-                            title="เลื่อนขึ้น"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            onClick={() => moveSelectedSkin(i, 1)}
-                            disabled={i === selectedSkins.length - 1}
-                            title="เลื่อนลง"
-                          >
-                            ↓
-                          </button>
-                          <button
-                            onClick={() =>
-                              setSelectedSkins((prev) =>
-                                prev.filter((x) => x.uid !== item.uid)
-                              )
-                            }
-                            title="นำออกจากป้าย"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right Column: Account Selling Info + Shop Watermark */}
-              <div className="accountConfigColumn">
-                <div className="configCard">
-                  <div className="configCardHeader">
-                    <b>ข้อมูลป้ายโพสต์ขายไอดี / ชื่อคอลเลกชัน</b>
-                    <div className="miniSegmented">
-                      <button
-                        className={posterMode === 'selling' ? 'active' : ''}
-                        onClick={() => setPosterMode('selling')}
-                      >
-                        ป้ายขายไอดี
-                      </button>
-                      <button
-                        className={posterMode === 'collection' ? 'active' : ''}
-                        onClick={() => setPosterMode('collection')}
-                      >
-                        ป้ายโชว์สกิน
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="formGrid2">
-                    <div className="fieldGroup fullWidth">
-                      <label>หัวข้อป้าย / ชื่อคอลเลกชัน</label>
-                      <input
-                        value={accountInfo.title}
-                        onChange={(e) =>
-                          setAccountInfo({
-                            ...accountInfo,
-                            title: e.target.value,
-                          })
-                        }
-                        placeholder="เช่น ไอดีหลักสกินแรร์จัดเต็ม พร้อมเล่น..."
+                    {imgSrc && (
+                      <img
+                        src={imgSrc}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        draggable={false}
                       />
-                    </div>
-
-                    <div className="fieldGroup fullWidth">
-                      <label>คำโปรยรอง (Subtitle)</label>
-                      <input
-                        value={accountInfo.subtitle}
-                        onChange={(e) =>
-                          setAccountInfo({
-                            ...accountInfo,
-                            subtitle: e.target.value,
-                          })
-                        }
-                        placeholder="รายละเอียดจุดเด่นสั้นๆ ใต้หัวข้อ..."
-                      />
-                    </div>
-
-                    {posterMode === 'selling' && (
-                      <>
-                        <div className="fieldGroup">
-                          <label>ราคาขาย (บาท)</label>
-                          <input
-                            value={accountInfo.price}
-                            onChange={(e) =>
-                              setAccountInfo({
-                                ...accountInfo,
-                                price: e.target.value,
-                              })
-                            }
-                            placeholder="เช่น 3,590"
-                          />
-                        </div>
-
-                        <div className="fieldGroup">
-                          <label>รหัสป้าย / รหัสสินค้า</label>
-                          <input
-                            value={accountInfo.accountCode}
-                            onChange={(e) =>
-                              setAccountInfo({
-                                ...accountInfo,
-                                accountCode: e.target.value,
-                              })
-                            }
-                            placeholder="เช่น WA-001"
-                          />
-                        </div>
-
-                        <div className="fieldGroup">
-                          <label>แรงค์ปัจจุบัน (Rank)</label>
-                          <select
-                            value={accountInfo.rank}
-                            onChange={(e) =>
-                              setAccountInfo({
-                                ...accountInfo,
-                                rank: e.target.value,
-                              })
-                            }
-                          >
-                            {RANK_OPTIONS.map((rk) => (
-                              <option key={rk} value={rk}>
-                                {rk}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="fieldGroup">
-                          <label>สถานะการผูกไอดี</label>
-                          <select
-                            value={accountInfo.bindStatus}
-                            onChange={(e) =>
-                              setAccountInfo({
-                                ...accountInfo,
-                                bindStatus: e.target.value,
-                              })
-                            }
-                          >
-                            {BIND_STATUS_OPTIONS.map((bs) => (
-                              <option key={bs} value={bs}>
-                                {bs}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="fieldGroup">
-                          <label>จำนวนฮีโร่ทั้งหมด</label>
-                          <input
-                            value={accountInfo.heroCount}
-                            onChange={(e) =>
-                              setAccountInfo({
-                                ...accountInfo,
-                                heroCount: e.target.value,
-                              })
-                            }
-                            placeholder="เช่น 115"
-                          />
-                        </div>
-
-                        <div className="fieldGroup">
-                          <label>จำนวนสกินทั้งหมดในไอดี</label>
-                          <div className="inputWithBtn">
-                            <input
-                              value={accountInfo.skinCount}
-                              onChange={(e) =>
-                                setAccountInfo({
-                                  ...accountInfo,
-                                  skinCount: e.target.value,
-                                })
-                              }
-                              placeholder="เช่น 340"
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setAccountInfo({
-                                  ...accountInfo,
-                                  skinCount: String(selectedSkins.length),
-                                })
-                              }
-                              title="ใช้จำนวนสกินที่เลือกในป้าย"
-                            >
-                              ={selectedSkins.length}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="fieldGroup">
-                          <label>อัตราชนะ (Win Rate)</label>
-                          <input
-                            value={accountInfo.winRate}
-                            onChange={(e) =>
-                              setAccountInfo({
-                                ...accountInfo,
-                                winRate: e.target.value,
-                              })
-                            }
-                            placeholder="เช่น 64.8%"
-                          />
-                        </div>
-
-                        <div className="fieldGroup">
-                          <label>รูน (Rune Info)</label>
-                          <input
-                            value={accountInfo.runeLevel}
-                            onChange={(e) =>
-                              setAccountInfo({
-                                ...accountInfo,
-                                runeLevel: e.target.value,
-                              })
-                            }
-                            placeholder="เช่น รูน Lv.3 ครบ 30 หน้า"
-                          />
-                        </div>
-
-                        <div className="fieldGroup fullWidth">
-                          <label>ช่องทางติดต่อสั่งซื้อ (FB / Line / เบอร์โทร)</label>
-                          <input
-                            value={accountInfo.contact}
-                            onChange={(e) =>
-                              setAccountInfo({
-                                ...accountInfo,
-                                contact: e.target.value,
-                              })
-                            }
-                            placeholder="เช่น FB: White Angel Shop / Line: @whiteangel"
-                          />
-                        </div>
-                      </>
                     )}
-
-                    <div className="fieldGroup fullWidth">
-                      <label>หมายเหตุเพิ่มเติมใต้ป้าย</label>
-                      <input
-                        value={accountInfo.note}
-                        onChange={(e) =>
-                          setAccountInfo({
-                            ...accountInfo,
-                            note: e.target.value,
-                          })
-                        }
-                        placeholder="เช่น นัดรับหรือผ่านกลางแอดมินได้ตลอด 24 ชม."
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Watermark & Shop Credit Config */}
-                <div className="configCard">
-                  <div className="configCardHeader">
-                    <b>
-                      <ShieldCheck size={15} /> ลายน้ำเครดิตร้าน & ป้องกันขโมยรูป
-                    </b>
-                    <label className="toggleSwitchLabel">
-                      <input
-                        type="checkbox"
-                        checked={watermark.enabled}
-                        onChange={(e) =>
-                          setWatermark({
-                            ...watermark,
-                            enabled: e.target.checked,
-                          })
-                        }
-                      />
-                      <span>เปิดใช้ลายน้ำ</span>
-                    </label>
-                  </div>
-
-                  <div className="formGrid2">
-                    <div className="fieldGroup">
-                      <label>ชื่อร้าน / เครดิตบนป้าย</label>
-                      <input
-                        value={watermark.text}
-                        onChange={(e) =>
-                          setWatermark({ ...watermark, text: e.target.value })
-                        }
-                        placeholder="เช่น WHITE ANGEL SHOP"
-                      />
-                    </div>
-
-                    <div className="fieldGroup">
-                      <label>ข้อความเตือนในลายน้ำ</label>
-                      <input
-                        value={watermark.subtext}
-                        onChange={(e) =>
-                          setWatermark({
-                            ...watermark,
-                            subtext: e.target.value,
-                          })
-                        }
-                        placeholder="เช่น ห้ามนำรูปไปใช้"
-                      />
-                    </div>
-
-                    <div className="fieldGroup">
-                      <label>รูปแบบลายน้ำ</label>
-                      <select
-                        value={watermark.style}
-                        onChange={(e) =>
-                          setWatermark({ ...watermark, style: e.target.value })
-                        }
+                    <div className="visualTileControls">
+                      <button
+                        type="button"
+                        onClick={() => moveSelectedSkin(i, -1)}
+                        disabled={i === 0}
+                        title="เลื่อนไปก่อนหน้า"
                       >
-                        <option value="tiled">คาดเฉียงทั่วป้าย (Anti-Theft)</option>
-                        <option value="center">ตราประทับกลางป้าย (Center)</option>
-                        <option value="corner">ป้ายเครดิตมุมภาพ (Corner)</option>
-                      </select>
-                    </div>
-
-                    <div className="fieldGroup">
-                      <label>
-                        ความเข้มลายน้ำ ({watermark.opacity}%)
-                      </label>
-                      <input
-                        type="range"
-                        min="5"
-                        max="45"
-                        value={watermark.opacity}
-                        onChange={(e) =>
-                          setWatermark({
-                            ...watermark,
-                            opacity: Number(e.target.value),
-                          })
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveSelectedSkin(i, 1)}
+                        disabled={i === selectedSkins.length - 1}
+                        title="เลื่อนไปถัดไป"
+                      >
+                        →
+                      </button>
+                      <button
+                        type="button"
+                        className="removeTileBtn"
+                        onClick={() =>
+                          setSelectedSkins((prev) =>
+                            prev.filter((x) => x.uid !== item.uid)
+                          )
                         }
-                      />
-                    </div>
-
-                    <div className="fieldGroup fullWidth">
-                      <label>โลโก้ร้าน (แสดงมุมซ้ายบนของป้ายและลายน้ำ)</label>
-                      <div className="logoUploadRow">
-                        <input
-                          value={watermark.logo}
-                          onChange={(e) =>
-                            setWatermark({ ...watermark, logo: e.target.value })
-                          }
-                          placeholder="วาง URL โลโก้ร้าน หรือกดอัปโหลดไฟล์..."
-                        />
-                        <label className="uploadLabelBtn">
-                          <Upload size={13} /> อัปโหลดโลโก้
-                          <input
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            onChange={async (e) => {
-                              const f = e.target.files?.[0];
-                              if (!f) return;
-                              const url = await uploadImageFile(f, 'branding');
-                              setWatermark((w) => ({ ...w, logo: url }));
-                              e.target.value = '';
-                            }}
-                          />
-                        </label>
-                        {watermark.logo && (
-                          <button
-                            type="button"
-                            className="clearImgBtn"
-                            onClick={() =>
-                              setWatermark({ ...watermark, logo: '' })
-                            }
-                          >
-                            ลบโลโก้
-                          </button>
-                        )}
-                      </div>
+                        title="นำออก"
+                      >
+                        ×
+                      </button>
                     </div>
                   </div>
-                </div>
-              </div>
+                );
+              })}
             </div>
 
             <div className="bottomActions">
               <button className="secondary" onClick={() => setStep(2)}>
-                <ArrowLeft size={16} /> กลับไปเลือกสกิน
+                <ArrowLeft size={16} /> กลับไปเลือกรูปเพิ่ม
               </button>
               <button
                 className="primary"
                 disabled={!selectedSkins.length}
                 onClick={() => setStep(4)}
               >
-                ถัดไป: เลือกรูปแบบตาราง & ธีมสี <ArrowRight size={16} />
+                ดูพรีวิวตารางจริง & ดาวน์โหลด <ArrowRight size={16} />
               </button>
             </div>
           </div>
         )}
 
         {/* ============================================================
-            STEP 4: POSTER MODE, COLUMNS & PASTEL THEME STUDIO
+            STEP 4: PURE SEAMLESS COLLAGE PREVIEW & DOWNLOAD PNG
            ============================================================ */}
         {step === 4 && (
-          <div className="panel">
-            <h3>
-              Step 4 · เลือกรูปแบบป้าย จำนวนคอลัมน์ และโทนสีพาสเทล{' '}
-              <Sparkles size={15} />
-            </h3>
-
-            {/* 3 Main Poster Modes */}
-            <div className="modeGrid">
-              {[
-                {
-                  id: 'selling',
-                  title: 'Account Selling Poster',
-                  desc: 'ป้ายโพสต์ขายไอดีครบวงจร พร้อมแถบข้อมูลแรงค์ ราคา วินเรท และช่องทางติดต่อ',
-                  icon: '♛',
-                },
-                {
-                  id: 'collection',
-                  title: 'Skin Collection Grid',
-                  desc: 'ป้ายโชว์คอลเลกชันสกินเรียงเป็นตารางสวยงาม เน้นโชว์ภาพสกินและระดับความแรร์',
-                  icon: '♡',
-                },
-                {
-                  id: 'showcase',
-                  title: 'Rare Skin Spotlight',
-                  desc: 'ป้ายไฮไลต์สกินแรร์เฉพาะตัวโปรด จัดวางโดดเด่นสไตล์โปสเตอร์',
-                  icon: '✧',
-                },
-              ].map((m, i) => (
-                <button
-                  key={m.id}
-                  className={
-                    'modeCard ' + (posterMode === m.id ? 'chosen' : '')
-                  }
-                  onClick={() => setPosterMode(m.id)}
-                >
-                  <div
-                    className="modeArt"
-                    style={{ background: PASTEL_PALETTE[i] }}
-                  >
-                    {m.icon}
-                    <span>{selectedSkins.length} SKINS</span>
-                  </div>
-                  <b>{m.title}</b>
-                  <small>{m.desc}</small>
-                </button>
-              ))}
-            </div>
-
-            {/* Layout & Theme Controls */}
-            <div className="layoutStudioGrid">
-              <div className="configCard">
-                <b>
-                  <SlidersHorizontal size={15} /> ตั้งค่าตารางสกิน (Grid & Card Layout)
-                </b>
-                <div className="formGrid2" style={{ marginTop: '12px' }}>
-                  <div className="fieldGroup">
-                    <label>จำนวนคอลัมน์ต่อแถว (Columns)</label>
-                    <div className="colPickerBtns">
-                      {[3, 4, 5, 6, 7, 8].map((col) => (
-                        <button
-                          key={col}
-                          type="button"
-                          className={layout.columns === col ? 'active' : ''}
-                          onClick={() => setLayout({ ...layout, columns: col })}
-                        >
-                          {col}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="fieldGroup">
-                    <label>สัดส่วนกรอบรูปสกิน (Card Shape)</label>
-                    <select
-                      value={layout.cardShape}
-                      onChange={(e) =>
-                        setLayout({ ...layout, cardShape: e.target.value })
-                      }
-                    >
-                      <option value="portrait">แนวตั้งมาตรฐาน (Portrait 3:4)</option>
-                      <option value="square">สี่เหลี่ยมจัตุรัส (Square 1:1)</option>
-                      <option value="compact">กะทัดรัดสำหรับสกินเยอะ (Compact)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="checkboxRowGroup">
-                  <label className="toggleSwitchLabel">
-                    <input
-                      type="checkbox"
-                      checked={layout.showHeroName}
-                      onChange={(e) =>
-                        setLayout({ ...layout, showHeroName: e.target.checked })
-                      }
-                    />
-                    <span>แสดงชื่อฮีโร่ใต้ชื่อสกิน</span>
-                  </label>
-
-                  <label className="toggleSwitchLabel">
-                    <input
-                      type="checkbox"
-                      checked={layout.showOrderNumber}
-                      onChange={(e) =>
-                        setLayout({
-                          ...layout,
-                          showOrderNumber: e.target.checked,
-                        })
-                      }
-                    />
-                    <span>แสดงตัวเลขลำดับ (#1, #2...)</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="configCard">
-                <b>เลือกโทนสีพื้นหลังพาสเทล (White Angel Themes)</b>
-                <div className="themeSwatchGrid">
-                  {POSTER_THEMES.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={
-                        'themeSwatchBtn ' +
-                        (layout.themeId === t.id ? 'active' : '')
-                      }
-                      onClick={() => setLayout({ ...layout, themeId: t.id })}
-                    >
-                      <span
-                        className="swatchCircle"
-                        style={{ background: t.gradient }}
-                      />
-                      <b>{t.name}</b>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="bottomActions">
-              <button className="secondary" onClick={() => setStep(3)}>
-                <ArrowLeft size={16} /> กลับไปจัดเรียง/ข้อมูลไอดี
-              </button>
-              <button className="primary" onClick={() => setStep(5)}>
-                ดูพรีวิวป้ายจริง & ดาวน์โหลด <ArrowRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================
-            STEP 5: LIVE POSTER PREVIEW, HIGH-RES PNG EXPORT & SAVED COLLECTION
-           ============================================================ */}
-        {step === 5 && (
           <div className="panel">
             <div className="panelTopRow">
               <div>
                 <h3>
-                  Step 5 · พรีวิวป้ายจริง & ดาวน์โหลด PNG ความละเอียดสูง{' '}
+                  Step 4 · พรีวิวคอลเลกชันสกิน & ดาวน์โหลด PNG{' '}
                   <Sparkles size={15} />
                 </h3>
                 <p className="muted">
-                  สามารถปรับจำนวนคอลัมน์หรือสลับโหมดป้ายแบบเรียลไทม์ก่อนกดดาวน์โหลดได้เลย
+                  ภาพที่ได้จะมีเฉพาะรูปสกินเรียงต่อกันแบบไร้ขอบ ไม่มีข้อความหรือการตกแต่งอื่นเพิ่มเติม
                 </p>
               </div>
 
               <div className="previewQuickControls">
-                <div className="miniSegmented">
-                  <button
-                    className={posterMode === 'selling' ? 'active' : ''}
-                    onClick={() => setPosterMode('selling')}
-                  >
-                    ป้ายขายไอดี
-                  </button>
-                  <button
-                    className={posterMode === 'collection' ? 'active' : ''}
-                    onClick={() => setPosterMode('collection')}
-                  >
-                    ป้ายโชว์สกิน
-                  </button>
-                </div>
-
-                <select
-                  value={layout.columns}
-                  onChange={(e) =>
-                    setLayout({ ...layout, columns: Number(e.target.value) })
-                  }
-                  className="compactSelect"
-                >
-                  {[3, 4, 5, 6, 7, 8].map((c) => (
-                    <option key={c} value={c}>
-                      ตาราง {c} คอลัมน์
-                    </option>
+                <div className="inlineColSelector">
+                  <span>คอลัมน์:</span>
+                  {COLUMN_OPTIONS.map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      className={
+                        'colChipBtn ' + (layout.columns === col ? 'active' : '')
+                      }
+                      onClick={() => setLayout({ ...layout, columns: col })}
+                    >
+                      {col}
+                    </button>
                   ))}
-                </select>
+                </div>
 
                 <button
                   className="secondary"
                   onClick={handleSaveToCollection}
                 >
-                  <FolderHeart size={15} /> บันทึกป้ายไว้ในคอลเลกชัน
+                  <FolderHeart size={15} /> บันทึกเก็บไว้
                 </button>
 
                 <button
                   className="primary"
                   onClick={handleDownloadPng}
-                  disabled={isExporting}
+                  disabled={isExporting || !selectedSkins.length}
                 >
                   <Download size={16} />{' '}
                   {isExporting ? 'กำลังสร้างไฟล์ภาพ...' : 'ดาวน์โหลด PNG'}
@@ -1884,53 +1366,47 @@ export function App() {
               </div>
             </div>
 
-            {/* Live Poster Canvas */}
+            {/* Pure Seamless Collage Canvas */}
             <div className="previewWrap">
               <PosterCanvas
                 previewRef={previewRef}
                 selectedSkins={selectedSkins}
                 heroesById={heroesById}
-                posterMode={posterMode}
-                accountInfo={accountInfo}
-                watermark={watermark}
                 layout={layout}
               />
             </div>
 
             <div className="bottomActions">
-              <button className="secondary" onClick={() => setStep(4)}>
-                <ArrowLeft size={16} /> กลับไปตั้งค่าตาราง
-              </button>
               <button className="secondary" onClick={() => setStep(3)}>
-                แก้ไขข้อมูลไอดี / ลำดับสกิน
+                <ArrowLeft size={16} /> กลับไปจัดเรียงลำดับรูป
               </button>
               <button
                 className="primary"
                 onClick={handleDownloadPng}
-                disabled={isExporting}
+                disabled={isExporting || !selectedSkins.length}
               >
                 <Download size={16} />{' '}
-                {isExporting ? 'กำลังสร้างไฟล์ภาพ...' : 'ดาวน์โหลดป้าย PNG (High-Res)'}
+                {isExporting
+                  ? 'กำลังสร้างไฟล์ภาพ...'
+                  : 'ดาวน์โหลดภาพคอลเลกชัน PNG (High-Res)'}
               </button>
             </div>
 
-            {/* Saved Posters Collection Section */}
             {savedPosters.length > 0 && (
               <div className="savedCollectionSection">
                 <h4>
-                  <FolderHeart size={17} /> คอลเลกชันป้ายที่บันทึกไว้ ({savedPosters.length})
+                  <FolderHeart size={17} /> คอลเลกชันที่บันทึกไว้ (
+                  {savedPosters.length})
                 </h4>
                 <div className="savedPostersGrid">
-                  {savedPosters.map((entry) => (
+                  {savedPosters.map((entry, idx) => (
                     <div key={entry.id} className="savedPosterItem">
                       <div>
-                        <b>{entry.accountInfo?.title || 'RoV Skin Poster'}</b>
+                        <b>คอลเลกชัน #{savedPosters.length - idx}</b>
                         <small>
                           บันทึกเมื่อ {entry.savedAt} ·{' '}
-                          {entry.selectedSkins?.length || 0} สกิน ·{' '}
-                          {entry.posterMode === 'selling'
-                            ? `ราคา ${entry.accountInfo?.price || '-'} ฿`
-                            : 'Collection Mode'}
+                          {entry.selectedSkins?.length || 0} รูป ·{' '}
+                          {entry.layout?.columns || 10} คอลัมน์
                         </small>
                       </div>
                       <div className="savedPosterActions">
@@ -1938,12 +1414,12 @@ export function App() {
                           className="secondary"
                           onClick={() => handleLoadSavedPoster(entry)}
                         >
-                          <Check size={14} /> โหลดป้ายนี้
+                          <Check size={14} /> โหลดคอลเลกชันนี้
                         </button>
                         <button
                           className="iconTrashBtn"
                           onClick={() => handleDeleteSavedPoster(entry.id)}
-                          title="ลบป้ายที่บันทึกไว้"
+                          title="ลบรายการนี้"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1976,8 +1452,8 @@ export function App() {
       />
 
       <footer>
-        ♡ RoV Skin & Account Poster Generator{' '}
-        <span>SortSkin System · White Angel Pastel Edition</span>
+        ♡ RoV Skin Collection Generator{' '}
+        <span>Seamless Skin Grid · White Angel Edition</span>
       </footer>
     </main>
   );

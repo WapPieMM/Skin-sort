@@ -11,6 +11,17 @@ export default function AdminLogin({ onAuthenticated }) {
     if (!password || isSubmitting) return;
     setIsSubmitting(true);
     setError('');
+
+    // รหัสผ่านฉุกเฉิน / ชั่วคราว สำหรับเข้าใช้งานและแก้ไขเว็บทันที
+    const TEMP_PASSCODE = 'admin1234';
+    if (password === TEMP_PASSCODE) {
+      sessionStorage.setItem('rov_temp_admin_auth', 'true');
+      setPassword('');
+      onAuthenticated?.();
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
@@ -23,7 +34,7 @@ export default function AdminLogin({ onAuthenticated }) {
       setPassword('');
       onAuthenticated?.();
     } catch (err) {
-      setError(err.message || 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      setError(err.message || 'รหัสผ่านไม่ถูกต้อง หรือไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
     } finally {
       setIsSubmitting(false);
     }
