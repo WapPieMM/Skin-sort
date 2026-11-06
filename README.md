@@ -30,3 +30,8 @@
 
 ## Build
 `npm run build`
+
+
+## Hero catalog
+
+The selector currently includes 124 hero names supplied for the project. Skin arrays are empty until verified skin names and artwork are provided; the interface displays an empty-state message rather than inventing skin data.
