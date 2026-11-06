@@ -2699,4 +2699,128 @@ footer span {
   }
 }
 
+/* Duplicate Skin Selection Badge & Quick +/- Controls on Step 2 Skin Cards */
+.skinCountBadge {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  border-radius: 99px;
+  background: linear-gradient(120deg, #c968a8, #a272bd);
+  border: 2px solid #fff;
+  color: #fff;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(120, 60, 110, 0.38);
+  z-index: 3;
+}
+
+.skinTileQtyBar {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  z-index: 3;
+}
+
+.skinTileQtyBar button {
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  line-height: 1.1;
+  box-shadow: 0 2px 8px rgba(70, 35, 65, 0.25);
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+
+.skinTileQtyBar button:active {
+  transform: scale(0.95);
+}
+
+.qtyMinusBtn {
+  background: rgba(255, 240, 245, 0.95);
+  color: #b84a69;
+  border: 1px solid #f0bfd0;
+  min-width: 26px;
+}
+
+.qtyPlusBtn {
+  background: rgba(255, 255, 255, 0.94);
+  color: #7c4b78;
+  border: 1px solid #e5cae2;
+}
+
+.skinTile.chosen .qtyPlusBtn {
+  background: linear-gradient(120deg, #d99dc4, #b98cc7);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* Integrated Step 2 SortSkin Live Reorder & Preview Studio */
+.step2LiveStudioSection {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 2px dashed #ead5e7;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.step2StudioHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.step2StudioHeader h3 {
+  margin: 2px 0 4px;
+  font-size: 18px;
+  color: #6b4c70;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step2SubHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.step2SubHeading b {
+  font-size: 13.5px;
+  color: #745179;
+}
+
+.previewSubHeading {
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #f0e1ee;
+}
+
+.sortActionBtn.dangerOutlineBtn {
+  background: #fff2f6;
+  border-color: #f3c6d4;
+  color: #bc4f6f;
+}
+
+.sortActionBtn.dangerOutlineBtn:hover {
+  background: #fde4ec;
+}
+
+
 
