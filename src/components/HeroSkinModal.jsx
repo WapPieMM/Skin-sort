@@ -94,9 +94,9 @@ export default function HeroSkinModal({
       try {
         const image = await compressImageFile(file, 460, 0.88);
         const name = file.name
-          .replace(/\\.[^.]+$/, '')
+          .replace(/\.[^.]+$/, '')
           .replace(/[_-]+/g, ' ')
-          .replace(/\\s+/g, ' ')
+          .replace(/\s+/g, ' ')
           .trim() || `Skin ${currentHero.skins.length + uploaded + 1}`;
         onAddSkin(currentHero.id, { name, image });
         uploaded += 1;
