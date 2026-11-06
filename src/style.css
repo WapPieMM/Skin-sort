@@ -975,15 +975,6 @@ button {
   color: #a38ba6;
 }
 
-.inlineTierSelect {
-  border-radius: 99px;
-  border: 1px solid #e4cfe2;
-  padding: 4px 8px;
-  font-size: 10.5px;
-  font-weight: 700;
-  outline: none;
-}
-
 .moveBtns {
   display: flex;
   gap: 4px;
@@ -1395,7 +1386,6 @@ button {
   text-overflow: ellipsis;
 }
 
-/* Tier Breakdown Summary Bar */
 /* Poster Skin Grid */
 .posterSkinGrid {
   display: grid;
