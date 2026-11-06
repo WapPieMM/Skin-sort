@@ -29,7 +29,6 @@ import {
   BIND_STATUS_OPTIONS,
   PASTEL_PALETTE,
 } from './data/defaultCatalog';
-import { compressImageFile } from './utils/imageHelper';
 import { uploadImageFile } from './utils/cloudStorage';
 import HeroSkinModal from './components/HeroSkinModal';
 import PosterCanvas from './components/PosterCanvas';
