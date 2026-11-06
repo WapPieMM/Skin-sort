@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบแอดมินก่อนอัปโหลดรูป' });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL?.replace(/\\/$/, '');
+  const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, '');
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
     return res.status(503).json({ error: 'ยังไม่ได้ตั้งค่า Supabase Storage บนเซิร์ฟเวอร์' });
