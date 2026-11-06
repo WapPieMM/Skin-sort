@@ -2171,3 +2171,100 @@ footer span {
     align-items: flex-start;
   }
 }
+
+
+/* Admin password gate */
+.adminGateLoading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: #9b6e91;
+  background: #fff8fc;
+  font-weight: 700;
+}
+.adminLoginPage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at top, #fff0f8 0, #f8edf5 48%, #f4e8f2 100%);
+}
+.adminLoginCard {
+  width: min(100%, 420px);
+  padding: 34px;
+  border: 1px solid #f0dce9;
+  border-radius: 24px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 24px 70px rgba(119,75,111,.12);
+}
+.adminLoginBrand {
+  color: #b27da5;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+.adminLoginCard h1 {
+  margin: 10px 0 8px;
+  color: #5f405a;
+  font-size: 26px;
+}
+.adminLoginCard p {
+  margin: 0 0 24px;
+  color: #9b8297;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.adminLoginCard label {
+  display: block;
+  margin-bottom: 8px;
+  color: #76566f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.adminLoginCard input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 14px;
+  border: 1px solid #ead7e6;
+  border-radius: 12px;
+  outline: none;
+  background: #fff;
+}
+.adminLoginCard input:focus {
+  border-color: #c58db7;
+  box-shadow: 0 0 0 3px rgba(197,141,183,.15);
+}
+.adminLoginCard button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 13px;
+  border: 0;
+  border-radius: 12px;
+  color: white;
+  background: linear-gradient(135deg, #c28ab5, #a86e9e);
+  font-weight: 800;
+  cursor: pointer;
+}
+.adminLoginCard button:disabled { opacity: .6; cursor: wait; }
+.adminLoginError {
+  margin-top: 12px;
+  color: #c14d72;
+  font-size: 12px;
+}
+.adminLogoutButton {
+  position: fixed;
+  z-index: 30;
+  top: 12px;
+  right: 16px;
+  padding: 7px 11px;
+  border: 1px solid #ead7e6;
+  border-radius: 999px;
+  color: #8f6888;
+  background: rgba(255,255,255,.92);
+  font-size: 11px;
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  .adminLogoutButton { top: 8px; right: 8px; }
+  .adminLoginCard { padding: 26px 22px; }
+}
