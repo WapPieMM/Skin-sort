@@ -26,13 +26,13 @@ export async function uploadImageFile(file, folder = 'skins') {
     throw new Error(signed.error || 'ไม่สามารถเตรียมการอัปโหลดได้');
   }
 
+  const uploadBody = new FormData();
+  uploadBody.append('cacheControl', '31536000');
+  uploadBody.append('', file);
+
   const uploadResponse = await fetch(signed.signedUrl, {
     method: 'PUT',
-    headers: {
-      'Content-Type': file.type,
-      'Cache-Control': 'public, max-age=31536000, immutable',
-    },
-    body: file,
+    body: uploadBody,
   });
   if (!uploadResponse.ok) {
     const detail = await uploadResponse.text().catch(() => '');
