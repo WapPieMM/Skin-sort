@@ -90,6 +90,14 @@ export function App() {
         let localCatalog = Array.isArray(indexedCatalog) && indexedCatalog.length
           ? indexedCatalog
           : null;
+        let hasExistingCatalogData = Boolean(localCatalog?.some(
+          (hero) => (Array.isArray(hero.skins) && hero.skins.length > 0) ||
+            !DEFAULT_HEROES.some((defaultHero) =>
+              defaultHero.id === hero.id &&
+              defaultHero.name === hero.name &&
+              defaultHero.image === hero.image
+            )
+        ));
 
         if (!localCatalog) {
           let parsed = [];
@@ -102,6 +110,14 @@ export function App() {
 
           const shouldClearLegacySkins =
             localStorage.getItem(CATALOG_SKIN_MIGRATION_KEY) !== 'done';
+          hasExistingCatalogData = Array.isArray(parsed) && parsed.some(
+            (hero) => (Array.isArray(hero.skins) && hero.skins.length > 0) ||
+              !DEFAULT_HEROES.some((defaultHero) =>
+                defaultHero.id === hero.id &&
+                defaultHero.name === hero.name &&
+                defaultHero.image === hero.image
+              )
+          );
           const source = Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_HEROES;
           const savedIds = new Set(source.map((hero) => hero.id));
           const newlyAddedDefaults = DEFAULT_HEROES.filter((hero) => !savedIds.has(hero.id));
@@ -123,7 +139,7 @@ export function App() {
 
         // Bootstrap is insert-only: a second device cannot overwrite a catalog
         // that another device has already initialized.
-        if (isAdminAuthenticated && localCatalog.length > 0) {
+        if (isAdminAuthenticated && hasExistingCatalogData && localCatalog.length > 0) {
           const bootstrapResponse = await fetch('/api/admin/catalog', {
             method: 'POST',
             credentials: 'same-origin',
