@@ -45,7 +45,7 @@ export async function uploadImageFile(file, folder = 'skins') {
     return signed.publicUrl;
   } catch {
     // Fallback to local high-quality Data URL when using temp login or offline
-    return await compressImageFile(file, 720, 0.92);
+    return await compressImageFile(file, 990, 0.94);
   }
 }
 

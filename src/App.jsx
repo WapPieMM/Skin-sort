@@ -17,6 +17,8 @@ import {
   FolderHeart,
   Edit3,
   Move,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import {
   DEFAULT_HEROES,
@@ -30,7 +32,104 @@ import { loadCatalogFromIndexedDB, saveCatalogToIndexedDB } from './utils/catalo
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
 const CATALOG_SKIN_MIGRATION_KEY = 'rov_white_angel_catalog_skins_cleared_v1';
 const SAVED_POSTERS_KEY = 'rov_white_angel_saved_posters_v2';
+const WORKSPACE_DRAFT_KEY = 'rov_white_angel_workspace_draft_v1';
 const ALL_COLUMN_OPTIONS = Array.from({ length: 20 }, (_, i) => i + 1);
+
+function loadWorkspaceDraft() {
+  try {
+    const raw = localStorage.getItem(WORKSPACE_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+const EXPORT_QUALITY_OPTIONS = [
+  {
+    id: 'sd',
+    scale: 0.75,
+    tileWidth: 248,
+    tileHeight: 405,
+    shortLabel: '0.75x ประหยัด',
+    label: 'ประหยัด 0.75x (248×405 px)',
+    badge: 'SD',
+  },
+  {
+    id: 'standard',
+    scale: 1,
+    tileWidth: 330,
+    tileHeight: 540,
+    shortLabel: '1x มาตรฐาน',
+    label: 'มาตรฐาน 1x (330×540 px)',
+    badge: 'HD',
+  },
+  {
+    id: 'high',
+    scale: 1.5,
+    tileWidth: 495,
+    tileHeight: 810,
+    shortLabel: '1.5x คมชัดสูง',
+    label: 'คมชัดสูง 1.5x (495×810 px)',
+    badge: 'FHD',
+  },
+  {
+    id: 'ultra',
+    scale: 2,
+    tileWidth: 660,
+    tileHeight: 1080,
+    shortLabel: '2x ชัดสูงสุด',
+    label: 'คมชัดสูงสุด 2x (660×1080 px)',
+    badge: '4K',
+  },
+];
+
+/**
+ * Applies a subtle 3x3 unsharp convolution filter to make skin artwork and badges extra crisp.
+ */
+function applyCanvasSharpen(ctx, width, height, amount = 0.22) {
+  if (!ctx || amount <= 0 || width * height > 24000000) return;
+  try {
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const src = imgData.data;
+    const out = new Uint8ClampedArray(src);
+    const w = width;
+    const h = height;
+    const a = amount;
+    const centerWeight = 1 + 4 * a;
+    const neighborWeight = -a;
+
+    for (let y = 1; y < h - 1; y++) {
+      const rowOffset = y * w * 4;
+      const prevRow = (y - 1) * w * 4;
+      const nextRow = (y + 1) * w * 4;
+      for (let x = 1; x < w - 1; x++) {
+        const idx = rowOffset + x * 4;
+        const left = idx - 4;
+        const right = idx + 4;
+        const up = prevRow + x * 4;
+        const down = nextRow + x * 4;
+
+        out[idx] =
+          src[idx] * centerWeight +
+          (src[left] + src[right] + src[up] + src[down]) * neighborWeight;
+        out[idx + 1] =
+          src[idx + 1] * centerWeight +
+          (src[left + 1] + src[right + 1] + src[up + 1] + src[down + 1]) *
+            neighborWeight;
+        out[idx + 2] =
+          src[idx + 2] * centerWeight +
+          (src[left + 2] + src[right + 2] + src[up + 2] + src[down + 2]) *
+            neighborWeight;
+      }
+    }
+    imgData.data.set(out);
+    ctx.putImageData(imgData, 0, 0);
+  } catch {
+    // Ignore if tainted or memory limit reached
+  }
+}
 
 /**
  * คำนวณจำนวนรูปต่อแถวที่แนะนำ (1 - 20 รูป/แถว) จากจำนวนรูปที่เลือกทั้งหมด (count)
@@ -305,8 +404,17 @@ export function App() {
     return map;
   }, [heroes]);
 
-  // 2. Navigation & Step State
-  const [step, setStep] = useState(1);
+  // 2. Navigation & Step State (Restored from saved draft if present)
+  const [step, setStep] = useState(() => {
+    const draft = loadWorkspaceDraft();
+    if (draft?.step && [1, 2, 3, 4].includes(Number(draft.step))) {
+      return Number(draft.step);
+    }
+    if (Array.isArray(draft?.selectedSkins) && draft.selectedSkins.length > 0) {
+      return 2;
+    }
+    return 1;
+  });
   const [activeHeroId, setActiveHeroId] = useState(
     () => heroes[0]?.id || 'alice'
   );
@@ -317,8 +425,43 @@ export function App() {
 
   const [isManagerOpen, setIsManagerOpen] = useState(false);
 
-  // 3. Selected Skin Queue
-  const [selectedSkins, setSelectedSkins] = useState([]);
+  // 3. Selected Skin Queue + Undo / Redo History Stack
+  const [selectedSkins, setSelectedSkins] = useState(() => {
+    const draft = loadWorkspaceDraft();
+    return Array.isArray(draft?.selectedSkins) ? draft.selectedSkins : [];
+  });
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+
+  const commitSelectedSkins = (updater) => {
+    setSelectedSkins((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (next === prev) return prev;
+      setUndoStack((stack) => [...stack.slice(-39), prev]);
+      setRedoStack([]);
+      return next;
+    });
+  };
+
+  const handleUndo = () => {
+    if (!undoStack.length) return;
+    const previousState = undoStack[undoStack.length - 1];
+    setUndoStack((stack) => stack.slice(0, -1));
+    setRedoStack((rStack) => [...rStack.slice(-39), selectedSkins]);
+    setSelectedSkins(previousState);
+    setSelectedArrangeIdx(null);
+    notify('ย้อนกลับ (Undo) เรียบร้อย');
+  };
+
+  const handleRedo = () => {
+    if (!redoStack.length) return;
+    const nextState = redoStack[redoStack.length - 1];
+    setRedoStack((rStack) => rStack.slice(0, -1));
+    setUndoStack((stack) => [...stack.slice(-39), selectedSkins]);
+    setSelectedSkins(nextState);
+    setSelectedArrangeIdx(null);
+    notify('ทำซ้ำ (Redo) เรียบร้อย');
+  };
 
   useEffect(() => {
     setSelectedSkins((prev) =>
@@ -330,7 +473,7 @@ export function App() {
           ...item,
           heroName: h.name,
           name: s.name,
-          image: s.image || '',
+          image: s.image || item.image || '',
         };
       })
     );
@@ -353,10 +496,118 @@ export function App() {
   const [quickSkinName, setQuickSkinName] = useState('');
   const [quickSkinImage, setQuickSkinImage] = useState('');
 
-  // 5. Grid Layout State (1 to 20 columns, odd or even)
-  const [layout, setLayout] = useState({
-    columns: 6,
+  // 5. Grid Layout State (1 to 20 columns, odd or even) & Export Quality
+  const [layout, setLayout] = useState(() => {
+    const draft = loadWorkspaceDraft();
+    const savedCols = Number(draft?.columns);
+    return {
+      columns:
+        savedCols >= 1 && savedCols <= 20 ? Math.round(savedCols) : 6,
+    };
   });
+  const [exportQualityId, setExportQualityId] = useState(() => {
+    const draft = loadWorkspaceDraft();
+    return EXPORT_QUALITY_OPTIONS.some((o) => o.id === draft?.exportQualityId)
+      ? draft.exportQualityId
+      : 'standard';
+  });
+  const [sharpenExport, setSharpenExport] = useState(() => {
+    const draft = loadWorkspaceDraft();
+    return typeof draft?.sharpenExport === 'boolean'
+      ? draft.sharpenExport
+      : true;
+  });
+
+  // Persist workspace draft (selectedSkins, columns, step, exportQualityId, sharpenExport) across refreshes
+  useEffect(() => {
+    try {
+      const fullPayload = {
+        step,
+        columns: layout?.columns || 6,
+        exportQualityId,
+        sharpenExport,
+        selectedSkins,
+      };
+      localStorage.setItem(WORKSPACE_DRAFT_KEY, JSON.stringify(fullPayload));
+    } catch {
+      try {
+        // Fallback if base64 images exceed localStorage quota: store lightweight refs & rehydrate from IndexedDB/Cloud catalog
+        const compactPayload = {
+          step,
+          columns: layout?.columns || 6,
+          exportQualityId,
+          sharpenExport,
+          selectedSkins: selectedSkins.map((item) => ({
+            uid: item.uid,
+            heroId: item.heroId,
+            heroName: item.heroName,
+            skinId: item.skinId,
+            name: item.name,
+            image:
+              item.image && !item.image.startsWith('data:') ? item.image : '',
+          })),
+        };
+        localStorage.setItem(
+          WORKSPACE_DRAFT_KEY,
+          JSON.stringify(compactPayload)
+        );
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  }, [step, layout?.columns, exportQualityId, sharpenExport, selectedSkins]);
+
+  // Keyboard shortcuts for Undo (Ctrl+Z / Cmd+Z) and Redo (Ctrl+Y / Cmd+Shift+Z)
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const tag = e.target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) {
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          if (redoStack.length > 0) {
+            e.preventDefault();
+            handleRedo();
+          }
+        } else if (undoStack.length > 0) {
+          e.preventDefault();
+          handleUndo();
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        if (redoStack.length > 0) {
+          e.preventDefault();
+          handleRedo();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
+
+  const currentQualityOption = useMemo(
+    () =>
+      EXPORT_QUALITY_OPTIONS.find((opt) => opt.id === exportQualityId) ||
+      EXPORT_QUALITY_OPTIONS[1],
+    [exportQualityId]
+  );
+
+  const exportDimensionsInfo = useMemo(() => {
+    const count = Math.max(1, selectedSkins.length);
+    const cols = Math.max(1, Math.min(20, Number(layout?.columns) || 6));
+    const actualCols = Math.min(cols, count);
+    const rows = Math.ceil(count / cols);
+    const tileW = currentQualityOption.tileWidth;
+    const tileH = currentQualityOption.tileHeight;
+    return {
+      tileWidth: tileW,
+      tileHeight: tileH,
+      totalWidth: actualCols * tileW,
+      totalHeight: rows * tileH,
+      actualCols,
+      rows,
+    };
+  }, [selectedSkins.length, layout?.columns, currentQualityOption]);
 
   // Smart Column Recommendations based on selectedSkins.length
   const recommendedColsList = useMemo(
@@ -545,7 +796,7 @@ export function App() {
     const uid = `${activeHero.id}__${created.id}__${Date.now()}_${Math.random()
       .toString(36)
       .slice(2, 7)}`;
-    setSelectedSkins((prev) => [
+    commitSelectedSkins((prev) => [
       ...prev,
       {
         uid,
@@ -577,7 +828,7 @@ export function App() {
     const uid = `${heroObj.id}__${skinObj.id}__${Date.now()}_${Math.random()
       .toString(36)
       .slice(2, 7)}`;
-    setSelectedSkins((prev) => [
+    commitSelectedSkins((prev) => [
       ...prev,
       {
         uid,
@@ -592,7 +843,7 @@ export function App() {
 
   // Remove the most recently added instance of a specific (heroId, skinId)
   const removeOneSkinInstance = (heroId, skinId) => {
-    setSelectedSkins((prev) => {
+    commitSelectedSkins((prev) => {
       const lastIdx = prev
         .map((item) => item.heroId === heroId && item.skinId === skinId)
         .lastIndexOf(true);
@@ -606,7 +857,7 @@ export function App() {
 
   // Duplicate an already-selected skin right at its current position in the queue
   const duplicateSkinAtIndex = (idx) => {
-    setSelectedSkins((prev) => {
+    commitSelectedSkins((prev) => {
       if (idx === null || idx < 0 || idx >= prev.length) return prev;
       const target = prev[idx];
       const duplicateItem = {
@@ -623,16 +874,16 @@ export function App() {
   };
 
   const clearAllSelectedSkins = () => {
-    setSelectedSkins([]);
+    commitSelectedSkins([]);
     setSelectedArrangeIdx(null);
-    notify('ล้างรายการสกินที่เลือกทั้งหมดแล้ว');
+    notify('ล้างรายการสกินที่เลือกทั้งหมดแล้ว (กด ↶ ย้อนกลับได้)');
   };
 
   const moveSelectedSkin = (idx, dir) => {
-    setSelectedSkins((prev) => {
+    commitSelectedSkins((prev) => {
       const arr = [...prev];
       const to = idx + dir;
-      if (to < 0 || to >= arr.length) return arr;
+      if (to < 0 || to >= arr.length) return prev;
       [arr[idx], arr[to]] = [arr[to], arr[idx]];
       return arr;
     });
@@ -654,7 +905,7 @@ export function App() {
     ) {
       return;
     }
-    setSelectedSkins((prev) => {
+    commitSelectedSkins((prev) => {
       if (fromIdx >= prev.length || toIdx >= prev.length) return prev;
       const copy = [...prev];
       const [moved] = copy.splice(fromIdx, 1);
@@ -666,7 +917,7 @@ export function App() {
 
   const swapSkinPositions = (idxA, idxB) => {
     if (idxA === null || idxB === null || idxA === idxB) return;
-    setSelectedSkins((prev) => {
+    commitSelectedSkins((prev) => {
       if (idxA >= prev.length || idxB >= prev.length) return prev;
       const copy = [...prev];
       [copy[idxA], copy[idxB]] = [copy[idxB], copy[idxA]];
@@ -677,7 +928,7 @@ export function App() {
   };
 
   const sortSkinsByHero = () => {
-    setSelectedSkins((prev) =>
+    commitSelectedSkins((prev) =>
       [...prev].sort((a, b) => a.heroName.localeCompare(b.heroName))
     );
     setSelectedArrangeIdx(null);
@@ -685,7 +936,7 @@ export function App() {
   };
 
   const reverseSkinsOrder = () => {
-    setSelectedSkins((prev) => [...prev].reverse());
+    commitSelectedSkins((prev) => [...prev].reverse());
     setSelectedArrangeIdx(null);
     notify('สลับลำดับรูปสกินหน้า-หลังเรียบร้อย');
   };
@@ -699,7 +950,7 @@ export function App() {
   const handleDragOver = (e, idx) => {
     e.preventDefault();
     if (dragIndex === null || dragIndex === idx) return;
-    setSelectedSkins((prev) => {
+    commitSelectedSkins((prev) => {
       const copy = [...prev];
       const [moved] = copy.splice(dragIndex, 1);
       copy.splice(idx, 0, moved);
@@ -735,6 +986,8 @@ export function App() {
       height: Math.max(72, Math.min(270, rect.height)),
       currentIdx: idx,
       isDragging: false,
+      hasRecordedUndo: false,
+      initialSkins: selectedSkins,
       lastSwapTime: 0,
       item,
       imgSrc,
@@ -804,6 +1057,12 @@ export function App() {
         e.clientY <= overRect.bottom - marginY;
 
       if (!insideCore) return;
+
+      if (!state.hasRecordedUndo && state.initialSkins) {
+        state.hasRecordedUndo = true;
+        setUndoStack((stack) => [...stack.slice(-39), state.initialSkins]);
+        setRedoStack([]);
+      }
 
       const fromIdx = state.currentIdx;
       setSelectedSkins((prev) => {
@@ -936,8 +1195,24 @@ export function App() {
       const cols = Math.max(1, Math.min(20, Number(layout?.columns) || 6));
       const actualCols = Math.min(cols, tiles.length);
       const rows = Math.ceil(tiles.length / cols);
-      const tileWidth = 330;
-      const tileHeight = 540; // 330 x 540 aspect ratio (11:18)
+
+      // Base dimensions from selected quality preset (maintains 330:540 / 11:18 ratio)
+      let tileWidth = currentQualityOption.tileWidth;
+      let tileHeight = currentQualityOption.tileHeight;
+
+      // Guard against browser canvas max dimension limits (e.g. 16384px)
+      const maxCanvasDim = 16000;
+      if (
+        actualCols * tileWidth > maxCanvasDim ||
+        rows * tileHeight > maxCanvasDim
+      ) {
+        const downscale = Math.min(
+          maxCanvasDim / (actualCols * tileWidth),
+          maxCanvasDim / (rows * tileHeight)
+        );
+        tileWidth = Math.max(110, Math.floor(tileWidth * downscale));
+        tileHeight = Math.max(180, Math.round((tileWidth * 540) / 330));
+      }
 
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, actualCols * tileWidth);
@@ -1009,12 +1284,16 @@ export function App() {
         );
       }
 
+      if (sharpenExport) {
+        applyCanvasSharpen(context, canvas.width, canvas.height, 0.2);
+      }
+
       const blob = await new Promise((resolve) => {
         canvas.toBlob(resolve, 'image/png');
       });
       if (!blob) throw new Error('ไม่สามารถสร้างไฟล์ PNG ได้');
 
-      const filename = `rov-skin-collection-${selectedSkins.length}skins-${layout.columns}cols.png`;
+      const filename = `rov-skin-collection-${selectedSkins.length}skins-${layout.columns}cols-${canvas.width}x${canvas.height}.png`;
       const file = new File([blob], filename, { type: 'image/png' });
 
       if (
@@ -1821,6 +2100,29 @@ export function App() {
                   <div className="boardActionsGroup">
                     <button
                       type="button"
+                      className="boardToolBtn undoRedoBtn"
+                      onClick={handleUndo}
+                      disabled={!undoStack.length}
+                      title="ย้อนกลับการแก้ไขล่าสุด (Ctrl+Z)"
+                    >
+                      <Undo2 size={13} /> ย้อนกลับ
+                      {undoStack.length > 0 && (
+                        <small className="tabular">({undoStack.length})</small>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boardToolBtn undoRedoBtn iconOnlyBtn"
+                      onClick={handleRedo}
+                      disabled={!redoStack.length}
+                      title="ทำซ้ำรายการที่ย้อนกลับ (Ctrl+Y)"
+                    >
+                      <Redo2 size={13} />
+                    </button>
+
+                    <button
+                      type="button"
                       className="boardToolBtn"
                       onClick={sortSkinsByHero}
                       disabled={!selectedSkins.length}
@@ -1910,10 +2212,63 @@ export function App() {
                       className="primary boardDownloadBtn"
                       onClick={handleDownloadPng}
                       disabled={isExporting || !selectedSkins.length}
+                      title={`ดาวน์โหลดภาพขนาดรวม ${exportDimensionsInfo.totalWidth.toLocaleString()} × ${exportDimensionsInfo.totalHeight.toLocaleString()} px`}
                     >
                       <Download size={14} />{' '}
-                      {isExporting ? 'กำลังสร้าง...' : 'ดาวน์โหลด PNG'}
+                      {isExporting
+                        ? 'กำลังสร้าง...'
+                        : `ดาวน์โหลด PNG (${currentQualityOption.badge})`}
                     </button>
+                  </div>
+                </div>
+
+                {/* Image Resolution / Sharpness Level Strip */}
+                <div className="sortskinQualityStrip">
+                  <div className="qualityGroupLeft">
+                    <span className="qualityStripLabel">
+                      <ImageIcon size={12} /> ความชัดรูป:
+                    </span>
+                    <div className="qualityOptionChips">
+                      {EXPORT_QUALITY_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          className={
+                            'qualityChipBtn ' +
+                            (exportQualityId === opt.id ? 'active' : '')
+                          }
+                          onClick={() => setExportQualityId(opt.id)}
+                          title={opt.label}
+                        >
+                          <b>{opt.shortLabel}</b>
+                          <small className="tabular">
+                            {opt.tileWidth}×{opt.tileHeight}
+                          </small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="qualityGroupRight">
+                    <button
+                      type="button"
+                      className={
+                        'crispToggleBtn ' + (sharpenExport ? 'active' : '')
+                      }
+                      onClick={() => setSharpenExport((prev) => !prev)}
+                      title="เร่งความคมชัดของขอบภาพและตัวอักษรตอนบันทึกไฟล์ PNG"
+                    >
+                      ✨ เร่งความคมชัด {sharpenExport ? 'เปิด' : 'ปิด'}
+                    </button>
+                    {selectedSkins.length > 0 && (
+                      <span className="totalResolutionBadge tabular">
+                        ขนาดภาพรวม:{' '}
+                        <b>
+                          {exportDimensionsInfo.totalWidth.toLocaleString()} ×{' '}
+                          {exportDimensionsInfo.totalHeight.toLocaleString()} px
+                        </b>
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -2011,7 +2366,7 @@ export function App() {
                           className="dangerSwapBtn"
                           onClick={() => {
                             const targetUid = activeArrangeItem.uid;
-                            setSelectedSkins((prev) =>
+                            commitSelectedSkins((prev) =>
                               prev.filter((x) => x.uid !== targetUid)
                             );
                             setSelectedArrangeIdx(null);
@@ -2114,7 +2469,7 @@ export function App() {
                                 className="boardTileCloseBtn"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedSkins((prev) =>
+                                  commitSelectedSkins((prev) =>
                                     prev.filter((x) => x.uid !== item.uid)
                                   );
                                   if (selectedArrangeIdx === i) {
@@ -2167,6 +2522,29 @@ export function App() {
                 </div>
 
                 <div className="boardActionsGroup">
+                  <button
+                    type="button"
+                    className="boardToolBtn undoRedoBtn"
+                    onClick={handleUndo}
+                    disabled={!undoStack.length}
+                    title="ย้อนกลับการแก้ไขล่าสุด (Ctrl+Z)"
+                  >
+                    <Undo2 size={13} /> ย้อนกลับ
+                    {undoStack.length > 0 && (
+                      <small className="tabular">({undoStack.length})</small>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="boardToolBtn undoRedoBtn iconOnlyBtn"
+                    onClick={handleRedo}
+                    disabled={!redoStack.length}
+                    title="ทำซ้ำรายการที่ย้อนกลับ (Ctrl+Y)"
+                  >
+                    <Redo2 size={13} />
+                  </button>
+
                   <button
                     type="button"
                     className="boardToolBtn"
@@ -2273,10 +2651,63 @@ export function App() {
                     className="primary boardDownloadBtn"
                     onClick={handleDownloadPng}
                     disabled={isExporting || !selectedSkins.length}
+                    title={`ดาวน์โหลดภาพขนาดรวม ${exportDimensionsInfo.totalWidth.toLocaleString()} × ${exportDimensionsInfo.totalHeight.toLocaleString()} px`}
                   >
                     <Download size={14} />{' '}
-                    {isExporting ? 'กำลังสร้าง...' : 'ดาวน์โหลด PNG'}
+                    {isExporting
+                      ? 'กำลังสร้าง...'
+                      : `ดาวน์โหลด PNG (${currentQualityOption.badge})`}
                   </button>
+                </div>
+              </div>
+
+              {/* Image Resolution / Sharpness Level Strip */}
+              <div className="sortskinQualityStrip">
+                <div className="qualityGroupLeft">
+                  <span className="qualityStripLabel">
+                    <ImageIcon size={12} /> ความชัดรูป:
+                  </span>
+                  <div className="qualityOptionChips">
+                    {EXPORT_QUALITY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        className={
+                          'qualityChipBtn ' +
+                          (exportQualityId === opt.id ? 'active' : '')
+                        }
+                        onClick={() => setExportQualityId(opt.id)}
+                        title={opt.label}
+                      >
+                        <b>{opt.shortLabel}</b>
+                        <small className="tabular">
+                          {opt.tileWidth}×{opt.tileHeight}
+                        </small>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="qualityGroupRight">
+                  <button
+                    type="button"
+                    className={
+                      'crispToggleBtn ' + (sharpenExport ? 'active' : '')
+                    }
+                    onClick={() => setSharpenExport((prev) => !prev)}
+                    title="เร่งความคมชัดของขอบภาพและตัวอักษรตอนบันทึกไฟล์ PNG"
+                  >
+                    ✨ เร่งความคมชัด {sharpenExport ? 'เปิด' : 'ปิด'}
+                  </button>
+                  {selectedSkins.length > 0 && (
+                    <span className="totalResolutionBadge tabular">
+                      ขนาดภาพรวม:{' '}
+                      <b>
+                        {exportDimensionsInfo.totalWidth.toLocaleString()} ×{' '}
+                        {exportDimensionsInfo.totalHeight.toLocaleString()} px
+                      </b>
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -2367,7 +2798,7 @@ export function App() {
                         className="dangerSwapBtn"
                         onClick={() => {
                           const targetUid = activeArrangeItem.uid;
-                          setSelectedSkins((prev) =>
+                          commitSelectedSkins((prev) =>
                             prev.filter((x) => x.uid !== targetUid)
                           );
                           setSelectedArrangeIdx(null);
@@ -2473,7 +2904,7 @@ export function App() {
                               className="boardTileCloseBtn"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedSkins((prev) =>
+                                commitSelectedSkins((prev) =>
                                   prev.filter((x) => x.uid !== item.uid)
                                 );
                                 if (selectedArrangeIdx === i) {

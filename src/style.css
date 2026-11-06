@@ -3268,6 +3268,21 @@ footer span {
   border-color: #f3cdd8;
 }
 
+.boardToolBtn.undoRedoBtn:not(:disabled) {
+  background: #f5e8f3;
+  border-color: #d6a4c9;
+  color: #5b365a;
+}
+
+.boardToolBtn.undoRedoBtn small {
+  font-size: 10.5px;
+  opacity: 0.85;
+}
+
+.boardToolBtn.iconOnlyBtn {
+  padding: 6px 9px;
+}
+
 .sortskinColSliderPill {
   display: inline-flex;
   align-items: center;
@@ -3309,6 +3324,124 @@ footer span {
 .boardDownloadBtn {
   padding: 7px 14px !important;
   font-size: 12px !important;
+}
+
+/* Image Resolution / Sharpness Level Strip */
+.sortskinQualityStrip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 16px;
+  background: #fcf4fa;
+  border-bottom: 1px solid #f0dfee;
+}
+
+.qualityGroupLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qualityStripLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #7c4f79;
+  white-space: nowrap;
+}
+
+.qualityOptionChips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.qualityChipBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: #ffffff;
+  border: 1px solid #e7d1e4;
+  color: #6a4a6d;
+  font-size: 11.5px;
+  transition: all 0.14s ease;
+}
+
+.qualityChipBtn b {
+  font-weight: 700;
+}
+
+.qualityChipBtn small {
+  font-size: 10.5px;
+  color: #9b789d;
+}
+
+.qualityChipBtn:hover {
+  border-color: #d094c2;
+  background: #fdf7fc;
+}
+
+.qualityChipBtn.active {
+  background: linear-gradient(135deg, #c97bb2, #a8649e);
+  border-color: #a8649e;
+  color: #ffffff;
+  box-shadow: 0 2px 7px rgba(176, 102, 160, 0.28);
+}
+
+.qualityChipBtn.active small {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.qualityGroupRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.crispToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: #ffffff;
+  border: 1px solid #e6d1e3;
+  color: #7d5980;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.14s ease;
+}
+
+.crispToggleBtn.active {
+  background: #f6e5f2;
+  border-color: #c982b6;
+  color: #62395f;
+}
+
+.totalResolutionBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: #ffffff;
+  border: 1px dashed #dec3db;
+  font-size: 11px;
+  color: #7c587f;
+}
+
+.totalResolutionBadge b {
+  color: #543457;
+  font-weight: 700;
 }
 
 /* Smart Column Recommendation Strip inside Board */

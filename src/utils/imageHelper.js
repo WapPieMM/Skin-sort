@@ -2,7 +2,7 @@
  * Reads an uploaded image file and resizes/compresses it via HTML5 Canvas
  * so it can be stored cleanly in localStorage and exported via html-to-image without CORS issues.
  */
-export function compressImageFile(file, maxWidth = 480, quality = 0.86) {
+export function compressImageFile(file, maxWidth = 990, quality = 0.94) {
   return new Promise((resolve, reject) => {
     if (!file) {
       reject(new Error('ไม่ได้เลือกไฟล์รูปภาพ'));
