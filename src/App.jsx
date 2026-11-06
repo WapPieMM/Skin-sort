@@ -386,10 +386,13 @@ export function App() {
   const [toastMsg, setToastMsg] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
-  // Reordering states (Desktop Drag + Mobile Touch Drag + Mobile Tap-to-Swap)
+  // Reordering states (Unified Pointer Drag + Floating Ghost + Tap-to-Swap)
   const [dragIndex, setDragIndex] = useState(null);
   const [selectedArrangeIdx, setSelectedArrangeIdx] = useState(null);
+  const [dragGhost, setDragGhost] = useState(null);
   const touchDragIdxRef = useRef(null);
+  const pointerDragRef = useRef(null);
+  const floatingGhostRef = useRef(null);
 
   const previewRef = useRef(null);
 
@@ -687,7 +690,7 @@ export function App() {
     notify('สลับลำดับรูปสกินหน้า-หลังเรียบร้อย');
   };
 
-  // Desktop HTML5 Drag and Drop
+  // Desktop HTML5 Drag and Drop (fallback)
   const handleDragStart = (idx) => {
     setDragIndex(idx);
     setSelectedArrangeIdx(idx);
@@ -708,7 +711,138 @@ export function App() {
 
   const handleDragEnd = () => setDragIndex(null);
 
-  // Mobile Touch Drag-and-Drop on the Drag Handle / Card
+  // Unified 60fps/120fps Pointer Drag-and-Drop (Works on iPad Touch, Apple Pencil, Mobile & Desktop)
+  const handleTilePointerDown = (e, idx, item, imgSrc, bg) => {
+    // Ignore right-click or clicks on the delete button
+    if (e.button && e.button !== 0) return;
+    if (e.target?.closest?.('button')) return;
+
+    const tileEl = e.currentTarget;
+    const rect = tileEl.getBoundingClientRect();
+    try {
+      tileEl.setPointerCapture?.(e.pointerId);
+    } catch {
+      // Ignore pointer capture errors
+    }
+
+    pointerDragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      width: Math.max(48, Math.min(180, rect.width)),
+      height: Math.max(72, Math.min(270, rect.height)),
+      currentIdx: idx,
+      isDragging: false,
+      lastSwapTime: 0,
+      item,
+      imgSrc,
+      bg,
+    };
+  };
+
+  const handleTilePointerMove = (e) => {
+    const state = pointerDragRef.current;
+    if (!state || state.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+
+    if (!state.isDragging) {
+      if (Math.hypot(dx, dy) < 5) return;
+      state.isDragging = true;
+      setDragIndex(state.currentIdx);
+      setSelectedArrangeIdx(null);
+      setDragGhost({
+        imgSrc: state.imgSrc,
+        bg: state.bg,
+        name: state.item?.name || '',
+        index: state.currentIdx,
+        width: state.width,
+        height: state.height,
+        x: e.clientX - state.offsetX,
+        y: e.clientY - state.offsetY,
+      });
+    }
+
+    // Direct hardware-accelerated DOM transform update (0ms latency on iPad ProMotion)
+    if (floatingGhostRef.current) {
+      const gx = e.clientX - state.offsetX;
+      const gy = e.clientY - state.offsetY;
+      floatingGhostRef.current.style.transform = `translate3d(${gx}px, ${gy}px, 0) scale(1.06) rotate(-1.5deg)`;
+    }
+
+    // Smooth auto-scroll when dragging near top or bottom of iPad viewport
+    if (e.clientY < 65) {
+      window.scrollBy({ top: -9, behavior: 'auto' });
+    } else if (e.clientY > window.innerHeight - 65) {
+      window.scrollBy({ top: 9, behavior: 'auto' });
+    }
+
+    const now = performance.now();
+    if (now - state.lastSwapTime < 45) return;
+
+    const elem = document.elementFromPoint(e.clientX, e.clientY);
+    const overTile = elem?.closest?.('[data-arrange-index]');
+    if (!overTile) return;
+
+    const overIdx = Number(overTile.getAttribute('data-arrange-index'));
+    if (
+      !Number.isNaN(overIdx) &&
+      overIdx >= 0 &&
+      overIdx !== state.currentIdx
+    ) {
+      // Check that the finger is reasonably inside the target tile to prevent border jitter
+      const overRect = overTile.getBoundingClientRect();
+      const marginX = overRect.width * 0.12;
+      const marginY = overRect.height * 0.12;
+      const insideCore =
+        e.clientX >= overRect.left + marginX &&
+        e.clientX <= overRect.right - marginX &&
+        e.clientY >= overRect.top + marginY &&
+        e.clientY <= overRect.bottom - marginY;
+
+      if (!insideCore) return;
+
+      const fromIdx = state.currentIdx;
+      setSelectedSkins((prev) => {
+        if (fromIdx >= prev.length || overIdx >= prev.length) return prev;
+        const copy = [...prev];
+        const [moved] = copy.splice(fromIdx, 1);
+        copy.splice(overIdx, 0, moved);
+        return copy;
+      });
+      state.currentIdx = overIdx;
+      state.lastSwapTime = now;
+      setDragIndex(overIdx);
+      setDragGhost((prev) => (prev ? { ...prev, index: overIdx } : null));
+    }
+  };
+
+  const handleTilePointerUp = (e) => {
+    const state = pointerDragRef.current;
+    if (!state || state.pointerId !== e.pointerId) return;
+
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    } catch {
+      // Ignore release errors
+    }
+
+    const wasDragging = state.isDragging;
+    const tappedIdx = state.currentIdx;
+
+    pointerDragRef.current = null;
+    setDragIndex(null);
+    setDragGhost(null);
+
+    if (!wasDragging) {
+      handleTileTap(tappedIdx);
+    }
+  };
+
+  // Mobile Touch Drag-and-Drop fallback
   const handleTouchDragStart = (idx) => {
     touchDragIdxRef.current = idx;
     setDragIndex(idx);
@@ -963,6 +1097,32 @@ export function App() {
         <div className="floatingToast">
           <Sparkles size={15} />
           <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* 60fps/120fps Floating Drag Ghost Card for iPad / Mobile / Desktop */}
+      {dragGhost && (
+        <div
+          ref={floatingGhostRef}
+          className="floatingDragGhostCard"
+          style={{
+            width: `${dragGhost.width}px`,
+            height: `${dragGhost.height}px`,
+            background: dragGhost.bg || '#f5d9ea',
+            transform: `translate3d(${dragGhost.x}px, ${dragGhost.y}px, 0) scale(1.06) rotate(-1.5deg)`,
+          }}
+        >
+          {dragGhost.imgSrc && (
+            <img
+              src={dragGhost.imgSrc}
+              alt=""
+              referrerPolicy="no-referrer"
+              draggable={false}
+            />
+          )}
+          <div className="boardTileNumBadge tabular">
+            {dragGhost.index + 1}
+          </div>
         </div>
       )}
 
@@ -1885,8 +2045,6 @@ export function App() {
                     <div
                       ref={previewRef}
                       className="sortskinPreviewGrid"
-                      onTouchMove={handleTouchDragMove}
-                      onTouchEnd={handleTouchDragEnd}
                       style={{
                         gridTemplateColumns: `repeat(${Math.max(
                           1,
@@ -1898,6 +2056,9 @@ export function App() {
                         const heroObj = heroesById[item.heroId];
                         const imgSrc = item.image || heroObj?.image || '';
                         const isSelectedForSwap = selectedArrangeIdx === i;
+                        const tileBg =
+                          heroObj?.color ||
+                          PASTEL_PALETTE[i % PASTEL_PALETTE.length];
 
                         return (
                           <div
@@ -1908,15 +2069,21 @@ export function App() {
                               (dragIndex === i ? 'dragging ' : '') +
                               (isSelectedForSwap ? 'selectedForSwap ' : '')
                             }
-                            draggable
-                            onDragStart={() => handleDragStart(i)}
-                            onDragOver={(e) => handleDragOver(e, i)}
-                            onDragEnd={handleDragEnd}
-                            onClick={() => handleTileTap(i)}
+                            onPointerDown={(e) =>
+                              handleTilePointerDown(
+                                e,
+                                i,
+                                item,
+                                imgSrc,
+                                tileBg
+                              )
+                            }
+                            onPointerMove={handleTilePointerMove}
+                            onPointerUp={handleTilePointerUp}
+                            onPointerCancel={handleTilePointerUp}
+                            onContextMenu={(e) => e.preventDefault()}
                             style={{
-                              background:
-                                heroObj?.color ||
-                                PASTEL_PALETTE[i % PASTEL_PALETTE.length],
+                              background: tileBg,
                             }}
                           >
                             {imgSrc && (
@@ -1930,15 +2097,11 @@ export function App() {
                               />
                             )}
 
-                            {/* Top-Left Number Badge (Matches Screenshot "1, 2, 3..." & Touch Drag Handle) */}
+                            {/* Top-Left Number Badge (Matches Screenshot "1, 2, 3...") */}
                             {!hideBoardBadges && (
                               <div
                                 className="boardTileNumBadge tabular"
-                                onTouchStart={(e) => {
-                                  e.stopPropagation();
-                                  handleTouchDragStart(i);
-                                }}
-                                title="แตะค้างเพื่อลากสลับตำแหน่ง หรือแตะที่รูปเพื่อสลับที่"
+                                title="แตะลากที่ตัวการ์ดเพื่อย้ายตำแหน่ง หรือแตะ 2 รูปเพื่อสลับที่"
                               >
                                 {i + 1}
                               </div>
@@ -1976,7 +2139,7 @@ export function App() {
 
                     <div className="boardHintFooter">
                       <span>
-                        💡 <b>วิธีสลับตำแหน่ง:</b> แตะที่รูปแรกแล้วแตะรูปที่ต้องการสลับที่ (หรือลากที่ตัวเลขมุมซ้ายบน) · เวลา<b>ดาวน์โหลด PNG</b> ระบบจะตัดตัวเลขและปุ่มออกให้อัตโนมัติ ได้ภาพไร้ขอบ 100%
+                        💡 <b>ลากสลับตำแหน่งได้ลื่น ๆ บน iPad / มือถือ / คอม:</b> แตะลากที่รูปสกินเพื่อเลื่อนสลับตำแหน่งได้ทันที (หรือแตะ 2 รูปเพื่อสลับที่กัน) · เวลา<b>ดาวน์โหลด PNG</b> ระบบจะตัดตัวเลขและปุ่มออกให้อัตโนมัติ
                       </span>
                     </div>
                   </div>
@@ -2243,8 +2406,6 @@ export function App() {
                   <div
                     ref={previewRef}
                     className="sortskinPreviewGrid"
-                    onTouchMove={handleTouchDragMove}
-                    onTouchEnd={handleTouchDragEnd}
                     style={{
                       gridTemplateColumns: `repeat(${Math.max(
                         1,
@@ -2256,6 +2417,9 @@ export function App() {
                       const heroObj = heroesById[item.heroId];
                       const imgSrc = item.image || heroObj?.image || '';
                       const isSelectedForSwap = selectedArrangeIdx === i;
+                      const tileBg =
+                        heroObj?.color ||
+                        PASTEL_PALETTE[i % PASTEL_PALETTE.length];
 
                       return (
                         <div
@@ -2266,15 +2430,21 @@ export function App() {
                             (dragIndex === i ? 'dragging ' : '') +
                             (isSelectedForSwap ? 'selectedForSwap ' : '')
                           }
-                          draggable
-                          onDragStart={() => handleDragStart(i)}
-                          onDragOver={(e) => handleDragOver(e, i)}
-                          onDragEnd={handleDragEnd}
-                          onClick={() => handleTileTap(i)}
+                          onPointerDown={(e) =>
+                            handleTilePointerDown(
+                              e,
+                              i,
+                              item,
+                              imgSrc,
+                              tileBg
+                            )
+                          }
+                          onPointerMove={handleTilePointerMove}
+                          onPointerUp={handleTilePointerUp}
+                          onPointerCancel={handleTilePointerUp}
+                          onContextMenu={(e) => e.preventDefault()}
                           style={{
-                            background:
-                              heroObj?.color ||
-                              PASTEL_PALETTE[i % PASTEL_PALETTE.length],
+                            background: tileBg,
                           }}
                         >
                           {imgSrc && (
@@ -2291,11 +2461,7 @@ export function App() {
                           {!hideBoardBadges && (
                             <div
                               className="boardTileNumBadge tabular"
-                              onTouchStart={(e) => {
-                                e.stopPropagation();
-                                handleTouchDragStart(i);
-                              }}
-                              title="แตะค้างเพื่อลากสลับตำแหน่ง หรือแตะที่รูปเพื่อสลับที่"
+                              title="แตะลากที่ตัวการ์ดเพื่อย้ายตำแหน่ง หรือแตะ 2 รูปเพื่อสลับที่"
                             >
                               {i + 1}
                             </div>
@@ -2332,7 +2498,7 @@ export function App() {
 
                   <div className="boardHintFooter">
                     <span>
-                      💡 แตะที่รูปเพื่อสลับตำแหน่ง หรือเลื่อนแถบจำนวนรูปต่อแถวด้านบนขวา (1–20 รูป) · เมื่อกด<b>ดาวน์โหลด PNG</b> จะได้ภาพคอลเลกชันไร้ขอบความละเอียดสูง
+                      💡 <b>ลากสลับตำแหน่งได้ลื่น ๆ บน iPad / มือถือ / คอม:</b> แตะลากที่รูปสกินเพื่อเลื่อนสลับตำแหน่งได้ทันที (หรือแตะ 2 รูปเพื่อสลับที่กัน) · เมื่อกด<b>ดาวน์โหลด PNG</b> จะได้ภาพคอลเลกชันไร้ขอบความละเอียดสูง
                     </span>
                   </div>
                 </div>
