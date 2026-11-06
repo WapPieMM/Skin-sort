@@ -385,18 +385,6 @@ export function App() {
 
   const previewRef = useRef(null);
 
-  const handleAdminLogout = async () => {
-    try {
-      sessionStorage.removeItem('rov_temp_admin_auth');
-      await fetch('/api/admin/logout', {
-        method: 'POST',
-        credentials: 'same-origin',
-      });
-    } finally {
-      setIsAdminAuthenticated(false);
-    }
-  };
-
   const notify = (msg) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 2800);
@@ -872,13 +860,6 @@ export function App() {
 
   return (
     <main className="app">
-      <button
-        className="adminLogoutButton"
-        onClick={handleAdminLogout}
-        type="button"
-      >
-        ออกจากระบบแอดมิน
-      </button>
 
       {toastMsg && (
         <div className="floatingToast">
