@@ -28,3 +28,23 @@
 
 ## Build
 `npm run build`
+
+
+## Vercel Admin Access
+
+เว็บจะเปิดให้ใช้งานหลังจากแอดมินเข้าสู่ระบบด้วยรหัสผ่านที่ตั้งใน Vercel Environment Variables
+
+ตั้งค่าตัวแปรต่อไปนี้ใน Vercel → Project → Settings → Environment Variables แล้ว Redeploy:
+
+- `ADMIN_PASSWORD`: รหัสผ่านแอดมินที่คาดเดายาก
+- `ADMIN_SESSION_SECRET`: ค่าสุ่มลับอย่างน้อย 32 ไบต์ ใช้ลงลายเซ็น session cookie
+
+ห้ามใส่ค่าจริงลงใน Git หรือไฟล์ฝั่งหน้าเว็บ ระบบใช้ HttpOnly, Secure (บน HTTPS), SameSite=Strict cookie และ session หมดอายุใน 12 ชั่วโมง
+
+ตัวอย่างสร้าง session secret ด้วย Node.js:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+หากยังไม่ได้ตั้ง Environment Variables ระบบ API จะปฏิเสธการเข้าสู่ระบบตามค่าเริ่มต้น

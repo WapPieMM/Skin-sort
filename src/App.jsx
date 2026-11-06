@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import AdminLogin from './components/AdminLogin';
 import { toPng } from 'html-to-image';
 import {
   Heart,
@@ -38,6 +39,24 @@ const CATALOG_SKIN_MIGRATION_KEY = 'rov_white_angel_catalog_skins_cleared_v1';
 const SAVED_POSTERS_KEY = 'rov_white_angel_saved_posters_v2';
 
 export function App() {
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isAdminSessionLoading, setIsAdminSessionLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/admin/session', { credentials: 'same-origin' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!cancelled) setIsAdminAuthenticated(Boolean(data?.authenticated));
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdminAuthenticated(false);
+      })
+      .finally(() => {
+        if (!cancelled) setIsAdminSessionLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
   // 1. Hero & Skin Catalog State (Persisted in localStorage)
   const [heroes, setHeroes] = useState(() =>
     DEFAULT_HEROES.map((hero) => ({ ...hero, skins: [] }))
@@ -228,6 +247,14 @@ export function App() {
   const [dragIndex, setDragIndex] = useState(null);
 
   const previewRef = useRef(null);
+
+  const handleAdminLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+    } finally {
+      setIsAdminAuthenticated(false);
+    }
+  };
 
   const notify = (msg) => {
     setToastMsg(msg);
@@ -555,8 +582,19 @@ export function App() {
     }
   };
 
+  if (isAdminSessionLoading) {
+    return <div className="adminGateLoading">กำลังตรวจสอบสิทธิ์แอดมิน...</div>;
+  }
+
+  if (!isAdminAuthenticated) {
+    return <AdminLogin onAuthenticated={() => setIsAdminAuthenticated(true)} />;
+  }
+
   return (
     <main className="app">
+      <button className="adminLogoutButton" onClick={handleAdminLogout} type="button">
+        ออกจากระบบแอดมิน
+      </button>
       {/* Floating Toast Notification */}
       {toastMsg && (
         <div className="floatingToast">
