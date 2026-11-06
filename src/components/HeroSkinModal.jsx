@@ -1,0 +1,539 @@
+import React, { useState } from 'react';
+import {
+  X,
+  Upload,
+  Link2,
+  Plus,
+  Trash2,
+  Sparkles,
+  Check,
+  Image as ImageIcon,
+  RotateCcw,
+  Download,
+  FileUp,
+} from 'lucide-react';
+import { SKIN_TIERS, HERO_ROLES, PASTEL_PALETTE, getTierMeta } from '../data/defaultCatalog';
+import { compressImageFile } from '../utils/imageHelper';
+
+export default function HeroSkinModal({
+  isOpen,
+  onClose,
+  heroes,
+  activeHeroId,
+  onSelectHeroId,
+  onUpdateHero,
+  onAddHero,
+  onDeleteHero,
+  onAddSkin,
+  onUpdateSkin,
+  onDeleteSkin,
+  onResetCatalog,
+  onExportCatalog,
+  onImportCatalog,
+}) {
+  const currentHero = heroes.find((h) => h.id === activeHeroId) || heroes[0];
+
+  const [isCreatingHero, setIsCreatingHero] = useState(false);
+  const [newHeroName, setNewHeroName] = useState('');
+  const [newHeroTitle, setNewHeroTitle] = useState('');
+  const [newHeroRole, setNewHeroRole] = useState('Mage');
+  const [newHeroImage, setNewHeroImage] = useState('');
+
+  const [newSkinName, setNewSkinName] = useState('');
+  const [newSkinTier, setNewSkinTier] = useState('Supreme');
+  const [newSkinImage, setNewSkinImage] = useState('');
+  const [statusMsg, setStatusMsg] = useState('');
+
+  if (!isOpen || !currentHero) return null;
+
+  const flashStatus = (msg) => {
+    setStatusMsg(msg);
+    setTimeout(() => setStatusMsg(''), 2500);
+  };
+
+  const handleHeroFileUpload = async (e, target = 'current') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageFile(file, 420, 0.88);
+      if (target === 'new') {
+        setNewHeroImage(dataUrl);
+      } else {
+        onUpdateHero(currentHero.id, { image: dataUrl });
+        flashStatus(`อัปเดตรูปภาพฮีโร่ ${currentHero.name} เรียบร้อยแล้ว`);
+      }
+    } catch (err) {
+      flashStatus('ไม่สามารถอ่านไฟล์รูปภาพได้');
+    }
+    e.target.value = '';
+  };
+
+  const handleSkinFileUpload = async (e, skinId = null) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageFile(file, 460, 0.88);
+      if (skinId) {
+        onUpdateSkin(currentHero.id, skinId, { image: dataUrl });
+        flashStatus('อัปเดตรูปภาพสกินเรียบร้อยแล้ว');
+      } else {
+        setNewSkinImage(dataUrl);
+      }
+    } catch (err) {
+      flashStatus('ไม่สามารถอ่านไฟล์รูปภาพสกินได้');
+    }
+    e.target.value = '';
+  };
+
+  const handleCreateHeroSubmit = (e) => {
+    e.preventDefault();
+    if (!newHeroName.trim()) return;
+    const created = onAddHero({
+      name: newHeroName.trim(),
+      title: newHeroTitle.trim() || 'RoV Hero',
+      role: newHeroRole,
+      image: newHeroImage.trim(),
+      color: PASTEL_PALETTE[heroes.length % PASTEL_PALETTE.length],
+    });
+    setNewHeroName('');
+    setNewHeroTitle('');
+    setNewHeroImage('');
+    setIsCreatingHero(false);
+    if (created?.id) onSelectHeroId(created.id);
+    flashStatus(`เพิ่มฮีโร่ ${created.name} สำเร็จ`);
+  };
+
+  const handleCreateSkinSubmit = (e) => {
+    e.preventDefault();
+    if (!newSkinName.trim()) return;
+    onAddSkin(currentHero.id, {
+      name: newSkinName.trim(),
+      tier: newSkinTier,
+      image: newSkinImage.trim(),
+    });
+    setNewSkinName('');
+    setNewSkinImage('');
+    flashStatus(`เพิ่มสกินใหม่ให้ ${currentHero.name} สำเร็จ`);
+  };
+
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          onImportCatalog(parsed);
+          flashStatus('นำเข้าฐานข้อมูลฮีโร่และสกินสำเร็จ');
+        }
+      } catch {
+        flashStatus('ไฟล์ JSON ไม่ถูกต้อง');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  return (
+    <div className="modalBackdrop" onClick={onClose}>
+      <div className="modalCard" onClick={(e) => e.stopPropagation()}>
+        <div className="modalHeader">
+          <div>
+            <span className="eyebrow">HERO & SKIN IMAGE DATABASE</span>
+            <h3>
+              จัดการข้อมูลรูปภาพฮีโร่ & สกิน <Sparkles size={18} />
+            </h3>
+          </div>
+          <div className="modalHeaderActions">
+            {statusMsg && <span className="statusToast">{statusMsg}</span>}
+            <button className="iconCloseBtn" onClick={onClose} aria-label="Close">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modalBody">
+          {/* Left column: Hero selector & Add new hero */}
+          <aside className="modalSidebar">
+            <div className="sidebarTop">
+              <b>รายชื่อฮีโร่ ({heroes.length})</b>
+              <button
+                className="tinyPrimaryBtn"
+                onClick={() => setIsCreatingHero(!isCreatingHero)}
+              >
+                <Plus size={14} /> เพิ่มฮีโร่ใหม่
+              </button>
+            </div>
+
+            {isCreatingHero && (
+              <form className="newHeroBox" onSubmit={handleCreateHeroSubmit}>
+                <b>เพิ่มฮีโร่ใหม่</b>
+                <input
+                  placeholder="ชื่อฮีโร่ (เช่น Florentino)"
+                  value={newHeroName}
+                  onChange={(e) => setNewHeroName(e.target.value)}
+                  required
+                />
+                <input
+                  placeholder="ฉายา (เช่น Gentle Blade)"
+                  value={newHeroTitle}
+                  onChange={(e) => setNewHeroTitle(e.target.value)}
+                />
+                <select
+                  value={newHeroRole}
+                  onChange={(e) => setNewHeroRole(e.target.value)}
+                >
+                  {HERO_ROLES.filter((r) => r.id !== 'All').map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  placeholder="วางลิงก์ URL รูปฮีโร่..."
+                  value={newHeroImage}
+                  onChange={(e) => setNewHeroImage(e.target.value)}
+                />
+                <label className="uploadLabelBtn">
+                  <Upload size={13} /> อัปโหลดรูปฮีโร่จากเครื่อง
+                  <input
+                    type="file"
+                    accept="image/*"
+                     hidden
+                    onChange={(e) => handleHeroFileUpload(e, 'new')}
+                  />
+                </label>
+                <div className="newHeroBtns">
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setIsCreatingHero(false)}
+                  >
+                    ยกเลิก
+                  </button>
+                  <button type="submit" className="primary">
+                    <Check size={14} /> บันทึกฮีโร่
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div className="modalHeroList">
+              {heroes.map((h, idx) => (
+                <button
+                  key={h.id}
+                  className={
+                    'modalHeroItem ' + (h.id === currentHero.id ? 'active' : '')
+                  }
+                  onClick={() => onSelectHeroId(h.id)}
+                >
+                  <div
+                    className="modalHeroThumb"
+                    style={{
+                      background:
+                        h.color || PASTEL_PALETTE[idx % PASTEL_PALETTE.length],
+                    }}
+                  >
+                    {h.image ? (
+                      <img
+                        src={h.image}
+                        alt={h.name}
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <span>{h.name.slice(0, 1)}</span>
+                    )}
+                  </div>
+                  <div className="modalHeroMeta">
+                    <b>{h.name}</b>
+                    <small>
+                      {h.role} · {h.skins.length} สกิน
+                    </small>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="catalogBackupTools">
+              <button className="backupBtn" onClick={onExportCatalog}>
+                <Download size={13} /> สำรองข้อมูล JSON
+              </button>
+              <label className="backupBtn">
+                <FileUp size={13} /> นำเข้า JSON
+                <input
+                  type="file"
+                  accept="application/json"
+                  hidden
+                  onChange={handleImportFile}
+                />
+              </label>
+              <button className="backupBtn dangerText" onClick={onResetCatalog}>
+                <RotateCcw size={13} /> รีเซ็ตค่าเริ่มต้น
+              </button>
+            </div>
+          </aside>
+
+          {/* Right column: Selected Hero image & Skin list editor */}
+          <div className="modalContent">
+            <div className="heroEditorSection">
+              <div className="heroAvatarPreviewBox">
+                <div
+                  className="heroAvatarLarge"
+                  style={{ background: currentHero.color || '#f5d9ea' }}
+                >
+                  {currentHero.image ? (
+                    <img
+                      src={currentHero.image}
+                      alt={currentHero.name}
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span>{currentHero.name.slice(0, 1)}</span>
+                  )}
+                </div>
+                <div className="avatarQuickBtns">
+                  <label className="uploadLabelBtn primaryUpload">
+                    <Upload size={14} /> อัปโหลดรูป {currentHero.name}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => handleHeroFileUpload(e, 'current')}
+                    />
+                  </label>
+                  {currentHero.image && (
+                    <button
+                      type="button"
+                      className="clearImgBtn"
+                      onClick={() =>
+                        onUpdateHero(currentHero.id, { image: '' })
+                      }
+                    >
+                      ลบรูปภาพ
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="heroFieldsGrid">
+                <div className="fieldGroup">
+                  <label>ชื่อฮีโร่ (Hero Name)</label>
+                  <input
+                    value={currentHero.name}
+                    onChange={(e) =>
+                      onUpdateHero(currentHero.id, { name: e.target.value })
+                    }
+                    placeholder="ชื่อฮีโร่..."
+                  />
+                </div>
+                <div className="fieldGroup">
+                  <label>สายฮีโร่ (Role)</label>
+                  <select
+                    value={currentHero.role || 'Mage'}
+                    onChange={(e) =>
+                      onUpdateHero(currentHero.id, { role: e.target.value })
+                    }
+                  >
+                    {HERO_ROLES.filter((r) => r.id !== 'All').map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="fieldGroup fullWidth">
+                  <label>
+                    <Link2 size={13} /> ลิงก์ URL รูปภาพฮีโร่ ({currentHero.name})
+                  </label>
+                  <input
+                    value={currentHero.image || ''}
+                    onChange={(e) =>
+                      onUpdateHero(currentHero.id, { image: e.target.value })
+                    }
+                    placeholder="วางลิงก์รูปภาพฮีโร่ (https://...) หรืออัปโหลดไฟล์จากปุ่มด้านซ้าย"
+                  />
+                </div>
+              </div>
+
+              {heroes.length > 1 && (
+                <button
+                  type="button"
+                  className="deleteHeroBtn"
+                  onClick={() => onDeleteHero(currentHero.id)}
+                  title="ลบฮีโร่นี้"
+                >
+                  <Trash2 size={15} />
+                </button>
+              )}
+            </div>
+
+            {/* Add new skin form for this hero */}
+            <form className="addSkinBar" onSubmit={handleCreateSkinSubmit}>
+              <div className="addSkinTitle">
+                <Plus size={15} /> เพิ่มสกินใหม่ให้ <b>{currentHero.name}</b>
+              </div>
+              <div className="addSkinInputs">
+                <input
+                  placeholder="ชื่อสกินใหม่ (เช่น Dimension Breaker)"
+                  value={newSkinName}
+                  onChange={(e) => setNewSkinName(e.target.value)}
+                  required
+                />
+                <select
+                  value={newSkinTier}
+                  onChange={(e) => setNewSkinTier(e.target.value)}
+                >
+                  {SKIN_TIERS.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.gem} {t.shortLabel}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  placeholder="ลิงก์ URL รูปสกิน (ถ้ามี)..."
+                  value={newSkinImage}
+                  onChange={(e) => setNewSkinImage(e.target.value)}
+                />
+                <label className="uploadLabelBtn">
+                  <ImageIcon size={14} />{' '}
+                  {newSkinImage ? 'เปลี่ยนไฟล์รูป' : 'อัปโหลดรูปสกิน'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => handleSkinFileUpload(e, null)}
+                  />
+                </label>
+                <button type="submit" className="primary">
+                  <Plus size={15} /> เพิ่มสกิน
+                </button>
+              </div>
+            </form>
+
+            {/* Existing skins table/grid for this hero */}
+            <div className="skinEditorListHeader">
+              <b>
+                รายการสกินของ {currentHero.name} ({currentHero.skins.length} สกิน)
+              </b>
+              <small>สามารถเปลี่ยนชื่อ ระดับป้าย Tier และใส่รูปภาพของแต่ละสกินได้ทันที</small>
+            </div>
+
+            <div className="skinEditorList">
+              {currentHero.skins.map((skin, idx) => {
+                const tierMeta = getTierMeta(skin.tier);
+                return (
+                  <div key={skin.id} className="skinEditorRow">
+                    <div
+                      className="skinEditorThumb"
+                      style={{
+                        background:
+                          PASTEL_PALETTE[(idx + 1) % PASTEL_PALETTE.length],
+                      }}
+                    >
+                      {skin.image ? (
+                        <img
+                          src={skin.image}
+                          alt={skin.name}
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : currentHero.image ? (
+                        <img
+                          src={currentHero.image}
+                          alt={skin.name}
+                          referrerPolicy="no-referrer"
+                          className="fallbackHeroImg"
+                        />
+                      ) : (
+                        <span>{skin.name.slice(0, 2).toUpperCase()}</span>
+                      )}
+                    </div>
+
+                    <div className="skinEditorInputs">
+                      <div className="skinEditorTopRow">
+                        <input
+                          value={skin.name}
+                          onChange={(e) =>
+                            onUpdateSkin(currentHero.id, skin.id, {
+                              name: e.target.value,
+                            })
+                          }
+                          placeholder="ชื่อสกิน"
+                        />
+                        <select
+                          value={skin.tier || 'Normal'}
+                          onChange={(e) =>
+                            onUpdateSkin(currentHero.id, skin.id, {
+                              tier: e.target.value,
+                            })
+                          }
+                          style={{
+                            background: tierMeta.softBg,
+                            color: tierMeta.textColor,
+                            borderColor: tierMeta.borderColor,
+                          }}
+                        >
+                          {SKIN_TIERS.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.gem} {t.shortLabel}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="skinEditorBottomRow">
+                        <input
+                          value={skin.image || ''}
+                          onChange={(e) =>
+                            onUpdateSkin(currentHero.id, skin.id, {
+                              image: e.target.value,
+                            })
+                          }
+                          placeholder="ลิงก์ URL รูปภาพสกินนี้ (หรือกดปุ่มอัปโหลดรูปด้านขวา)"
+                        />
+                        <label className="uploadLabelBtn">
+                          <Upload size={13} /> อัปโหลดรูป
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => handleSkinFileUpload(e, skin.id)}
+                          />
+                        </label>
+                        {skin.image && (
+                          <button
+                            type="button"
+                            className="clearImgBtn"
+                            onClick={() =>
+                              onUpdateSkin(currentHero.id, skin.id, {
+                                image: '',
+                              })
+                            }
+                          >
+                            ลบรูป
+                          </button>
+                        )}
+                        {currentHero.skins.length > 1 && (
+                          <button
+                            type="button"
+                            className="iconTrashBtn"
+                            onClick={() =>
+                              onDeleteSkin(currentHero.id, skin.id)
+                            }
+                            title="ลบสกินนี้"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
