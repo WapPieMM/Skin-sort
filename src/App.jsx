@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AdminLogin from './components/AdminLogin';
-import { toPng } from 'html-to-image';
+import { toBlob } from 'html-to-image';
 import {
   Heart,
   Sparkles,
@@ -751,21 +751,55 @@ export function App() {
     return list;
   }, [heroes, activeHero, showAllHeroesSkins, skinQuery]);
 
-  // Download Pure Collage PNG
+  // Download Pure Collage PNG (iOS Share Sheet + standard browser download)
   const handleDownloadPng = async () => {
     if (!previewRef.current) return;
     setIsExporting(true);
     try {
-      const dataUrl = await toPng(previewRef.current, {
+      const blob = await toBlob(previewRef.current, {
         pixelRatio: 2,
         cacheBust: true,
       });
+      if (!blob) throw new Error('ไม่สามารถสร้างไฟล์ PNG ได้');
+
+      const filename = `rov-skin-collection-${selectedSkins.length}skins-${layout.columns}cols.png`;
+      const file = new File([blob], filename, { type: 'image/png' });
+
+      // Safari on iPhone/iPad supports saving a generated image through the
+      // native share sheet more reliably than downloading a data URL.
+      if (
+        typeof navigator !== 'undefined' &&
+        typeof navigator.share === 'function' &&
+        typeof navigator.canShare === 'function' &&
+        navigator.canShare({ files: [file] })
+      ) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'RoV Skin Collection',
+          });
+          notify('ส่งภาพไปยังเมนูแชร์เรียบร้อยแล้ว เลือก Save Image เพื่อบันทึก');
+          return;
+        } catch (shareError) {
+          // The user closing the share sheet is not a download failure.
+          if (shareError?.name === 'AbortError') return;
+          // Fall through to the regular file download for unsupported cases.
+        }
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.download = `rov-skin-collection-${selectedSkins.length}skins-${layout.columns}cols.png`;
-      a.href = dataUrl;
+      a.href = objectUrl;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
-      notify('ดาวน์โหลดภาพรวมคอลเลกชันสกิน PNG สำเร็จ!');
-    } catch {
+      a.remove();
+      // Keep the object URL alive briefly so Safari has time to consume it.
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+      notify('สร้างไฟล์ PNG แล้ว หากไม่เริ่มดาวน์โหลด กรุณาเปิดไฟล์จากรายการดาวน์โหลด');
+    } catch (error) {
+      console.error('PNG export failed:', error);
       notify('เกิดข้อผิดพลาดในการสร้างไฟล์ภาพ กรุณาลองอีกครั้ง');
     } finally {
       setIsExporting(false);
