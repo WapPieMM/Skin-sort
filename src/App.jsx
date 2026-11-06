@@ -756,6 +756,30 @@ export function App() {
     if (!previewRef.current) return;
     setIsExporting(true);
     try {
+      // Safari can begin DOM-to-image conversion before remote skin images
+      // have finished decoding. Wait for every preview image before capture.
+      const previewImages = Array.from(
+        previewRef.current.querySelectorAll('img')
+      );
+      await Promise.all(
+        previewImages.map(async (img) => {
+          if (!img.complete) {
+            await new Promise((resolve, reject) => {
+              img.addEventListener('load', resolve, { once: true });
+              img.addEventListener(
+                'error',
+                () => reject(new Error('โหลดรูปสกินบางรูปไม่สำเร็จ')),
+                { once: true }
+              );
+            });
+          }
+          if (!img.naturalWidth || !img.naturalHeight) {
+            throw new Error('โหลดรูปสกินบางรูปไม่สำเร็จ');
+          }
+          if (typeof img.decode === 'function') await img.decode();
+        })
+      );
+
       const blob = await toBlob(previewRef.current, {
         pixelRatio: 2,
         cacheBust: true,
