@@ -17,19 +17,16 @@ import {
   Layers,
   Check,
   Image as ImageIcon,
-  ArrowUpDown,
   FolderHeart,
   Edit3,
 } from 'lucide-react';
 import {
   DEFAULT_HEROES,
-  SKIN_TIERS,
   HERO_ROLES,
   POSTER_THEMES,
   RANK_OPTIONS,
   BIND_STATUS_OPTIONS,
   PASTEL_PALETTE,
-  getTierMeta,
 } from './data/defaultCatalog';
 import { compressImageFile } from './utils/imageHelper';
 import HeroSkinModal from './components/HeroSkinModal';
@@ -38,36 +35,8 @@ import PosterCanvas from './components/PosterCanvas';
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
 const SAVED_POSTERS_KEY = 'rov_white_angel_saved_posters_v2';
 
-function buildInitialSelection(heroes) {
-  const picks = [];
-  const sampleIds = [
-    ['lauriel', 'lauriel-dimension'],
-    ['violet', 'violet-dimension'],
-    ['allain', 'allain-kirito'],
-    ['alice', 'alice-eternal-sailor'],
-    ['butterfly', 'butterfly-phoenix'],
-    ['aoi', 'aoi-celestial'],
-    ['krixi', 'krixi-crescent-moon'],
-    ['telannas', 'tel-eternal'],
-    ['yena', 'yena-wave'],
-    ['liliana', 'lili-melody'],
-  ];
-  sampleIds.forEach(([hId, sId]) => {
-    const h = heroes.find((x) => x.id === hId);
-    const s = h?.skins.find((x) => x.id === sId);
-    if (h && s) {
-      picks.push({
-        uid: `${h.id}__${s.id}`,
-        heroId: h.id,
-        heroName: h.name,
-        skinId: s.id,
-        name: s.name,
-        tier: s.tier,
-        image: s.image || '',
-      });
-    }
-  });
-  return picks;
+function buildInitialSelection() {
+  return [];
 }
 
 export function App() {
@@ -82,13 +51,13 @@ export function App() {
           const newlyAddedDefaults = DEFAULT_HEROES.filter(
             (hero) => !savedIds.has(hero.id)
           );
-          return [...parsed, ...newlyAddedDefaults];
+          return [...parsed.map((hero) => ({ ...hero, skins: [] })), ...newlyAddedDefaults.map((hero) => ({ ...hero, skins: [] }))];
         }
       }
     } catch {
       // Fallback to default
     }
-    return DEFAULT_HEROES;
+    return DEFAULT_HEROES.map((hero) => ({ ...hero, skins: [] }));
   });
 
   useEffect(() => {
@@ -119,9 +88,7 @@ export function App() {
   const [isManagerOpen, setIsManagerOpen] = useState(false);
 
   // 3. Selected Skins Queue (Multi-Hero SortSkin System)
-  const [selectedSkins, setSelectedSkins] = useState(() =>
-    buildInitialSelection(heroes)
-  );
+  const [selectedSkins, setSelectedSkins] = useState([])
 
   // Sync any catalog edits (name/tier/image) into currently selectedSkins
   useEffect(() => {
@@ -134,7 +101,6 @@ export function App() {
           ...item,
           heroName: h.name,
           name: s.name,
-          tier: s.tier,
           image: s.image || '',
         };
       })
@@ -145,24 +111,22 @@ export function App() {
   const [heroQuery, setHeroQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [skinQuery, setSkinQuery] = useState('');
-  const [tierFilter, setTierFilter] = useState('All');
   const [showAllHeroesSkins, setShowAllHeroesSkins] = useState(false);
 
   // Quick inline add skin state in Step 1 / Step 2
   const [quickSkinName, setQuickSkinName] = useState('');
-  const [quickSkinTier, setQuickSkinTier] = useState('Supreme');
   const [quickSkinImage, setQuickSkinImage] = useState('');
 
   // 5. Account Info, Watermark & Layout State (SortSkin Features)
   const [posterMode, setPosterMode] = useState('selling'); // 'selling' | 'collection' | 'showcase'
   const [accountInfo, setAccountInfo] = useState({
     title: 'Angel Collection · ไอดีหลักสกินแรร์จัดเต็ม',
-    subtitle: 'รวมสกินระดับ Dimension Breaker & Supreme พร้อมเล่นทุกสาย',
+    subtitle: 'รวมฮีโร่และข้อมูลไอดี พร้อมจัดทำป้ายประกาศ',
     accountCode: 'WA-001',
     price: '3,590',
     rank: RANK_OPTIONS[0],
     heroCount: '115',
-    skinCount: '340',
+    skinCount: '0',
     winRate: '64.8%',
     runeLevel: 'รูน Lv.3 ครบ 30 หน้า',
     bindStatus: BIND_STATUS_OPTIONS[0],
@@ -183,8 +147,6 @@ export function App() {
     columns: 5,
     cardShape: 'portrait', // 'portrait' | 'square' | 'compact'
     themeId: 'white-angel',
-    showTierBadge: true,
-    showTierSummary: true,
     showHeroName: true,
     showOrderNumber: true,
   });
@@ -193,7 +155,7 @@ export function App() {
   const [savedPosters, setSavedPosters] = useState(() => {
     try {
       const raw = localStorage.getItem(SAVED_POSTERS_KEY);
-      return raw ? JSON.parse(raw) : [];
+      return raw ? JSON.parse(raw).map((poster) => ({ ...poster, selectedSkins: [] })) : [];
     } catch {
       return [];
     }
@@ -229,14 +191,7 @@ export function App() {
       role,
       image,
       color,
-      skins: [
-        {
-          id: `${id}-default`,
-          name: 'Default',
-          tier: 'Normal',
-          image: image || '',
-        },
-      ],
+      skins: [],
     };
     setHeroes((prev) => [newHero, ...prev]);
     setActiveHeroId(id);
@@ -255,9 +210,9 @@ export function App() {
     notify('ลบฮีโร่ออกจากรายการแล้ว');
   };
 
-  const handleAddSkin = (heroId, { name, tier, image }) => {
+  const handleAddSkin = (heroId, { name, image }) => {
     const skinId = `${heroId}-skin-${Date.now().toString().slice(-5)}`;
-    const newSkin = { id: skinId, name, tier, image: image || '' };
+    const newSkin = { id: skinId, name, image: image || '' };
     setHeroes((prev) =>
       prev.map((h) =>
         h.id === heroId ? { ...h, skins: [newSkin, ...h.skins] } : h
@@ -294,9 +249,9 @@ export function App() {
   };
 
   const handleResetCatalog = () => {
-    setHeroes(DEFAULT_HEROES);
+    setHeroes(DEFAULT_HEROES.map((hero) => ({ ...hero, skins: [] })));
     setActiveHeroId(DEFAULT_HEROES[0].id);
-    setSelectedSkins(buildInitialSelection(DEFAULT_HEROES));
+    setSelectedSkins([]);
     notify('รีเซ็ตข้อมูลฮีโร่และสกินกลับเป็นค่าเริ่มต้นแล้ว');
   };
 
@@ -351,7 +306,6 @@ export function App() {
     if (!quickSkinName.trim() || !activeHero) return;
     const created = handleAddSkin(activeHero.id, {
       name: quickSkinName.trim(),
-      tier: quickSkinTier,
       image: quickSkinImage.trim(),
     });
     // Also automatically select the newly added skin into the poster queue
@@ -364,7 +318,6 @@ export function App() {
         heroName: activeHero.name,
         skinId: created.id,
         name: created.name,
-        tier: created.tier,
         image: created.image || '',
       },
     ]);
@@ -393,7 +346,6 @@ export function App() {
           heroName: heroObj.name,
           skinId: skinObj.id,
           name: skinObj.name,
-          tier: skinObj.tier || 'Normal',
           image: skinObj.image || '',
         },
       ];
@@ -410,24 +362,10 @@ export function App() {
     });
   };
 
-  const sortSkinsByTier = () => {
-    setSelectedSkins((prev) =>
-      [...prev].sort((a, b) => {
-        const orderA = getTierMeta(a.tier).order;
-        const orderB = getTierMeta(b.tier).order;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.heroName.localeCompare(b.heroName);
-      })
-    );
-    notify('จัดเรียงสกินตามระดับความแรร์ (Dimension → Supreme → Legend) เรียบร้อย!');
-  };
-
   const sortSkinsByHero = () => {
     setSelectedSkins((prev) =>
       [...prev].sort((a, b) => {
-        const cmp = a.heroName.localeCompare(b.heroName);
-        if (cmp !== 0) return cmp;
-        return getTierMeta(a.tier).order - getTierMeta(b.tier).order;
+        return a.heroName.localeCompare(b.heroName);
       })
     );
     notify('จัดเรียงสกินแยกตามชื่อฮีโร่ (A → Z) เรียบร้อย!');
@@ -470,17 +408,16 @@ export function App() {
     const list = [];
     sourceHeroes.forEach((h) => {
       h.skins.forEach((s) => {
-        const matchesTier = tierFilter === 'All' || s.tier === tierFilter;
         const matchesQuery =
           s.name.toLowerCase().includes(skinQuery.toLowerCase()) ||
           h.name.toLowerCase().includes(skinQuery.toLowerCase());
-        if (matchesTier && matchesQuery) {
+        if (matchesQuery) {
           list.push({ hero: h, skin: s });
         }
       });
     });
     return list;
-  }, [heroes, activeHero, showAllHeroesSkins, tierFilter, skinQuery]);
+  }, [heroes, activeHero, showAllHeroesSkins, skinQuery]);
 
   // Download PNG
   const handleDownloadPng = async () => {
@@ -519,7 +456,7 @@ export function App() {
       accountInfo: { ...accountInfo },
       watermark: { ...watermark },
       layout: { ...layout },
-      selectedSkins: [...selectedSkins],
+      selectedSkins: [],
     };
     const next = [entry, ...savedPosters];
     setSavedPosters(next);
@@ -536,7 +473,7 @@ export function App() {
     if (entry.accountInfo) setAccountInfo(entry.accountInfo);
     if (entry.watermark) setWatermark(entry.watermark);
     if (entry.layout) setLayout(entry.layout);
-    if (entry.selectedSkins) setSelectedSkins(entry.selectedSkins);
+    setSelectedSkins([]);
     setStep(5);
     notify(`โหลดป้าย "${entry.accountInfo?.title || 'Saved Poster'}" แล้ว`);
   };
@@ -625,7 +562,7 @@ export function App() {
           <p>
             สร้างป้ายรวมสกินแรร์และป้ายโพสต์ขายไอดี RoV สไตล์ SortSkin
             <br />
-            เพิ่มรูปภาพฮีโร่และสกินได้เอง จัดเรียงตามระดับ Tier อัตโนมัติ พร้อมลายน้ำร้านค้า ♡
+            เพิ่มรูปภาพฮีโร่และสกินได้เอง จัดเรียงตามชื่อฮีโร่ พร้อมลายน้ำร้านค้า ♡
           </p>
           <div className="bannerBtnGroup">
             <button className="primary" onClick={() => setStep(2)}>
@@ -919,16 +856,6 @@ export function App() {
                           onChange={(e) => setQuickSkinName(e.target.value)}
                           required
                         />
-                        <select
-                          value={quickSkinTier}
-                          onChange={(e) => setQuickSkinTier(e.target.value)}
-                        >
-                          {SKIN_TIERS.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.gem} {t.shortLabel}
-                            </option>
-                          ))}
-                        </select>
                         <input
                           placeholder="ลิงก์ URL รูปสกิน (หรืออัปโหลดไฟล์)"
                           value={quickSkinImage}
@@ -1057,34 +984,12 @@ export function App() {
                 />
               </div>
 
-              <div className="rolePills">
-                <button
-                  className={
-                    'filterTab ' + (tierFilter === 'All' ? 'active' : '')
-                  }
-                  onClick={() => setTierFilter('All')}
-                >
-                  ทุกระดับ (All Tiers)
-                </button>
-                {SKIN_TIERS.map((t) => (
-                  <button
-                    key={t.id}
-                    className={
-                      'filterTab ' + (tierFilter === t.id ? 'active' : '')
-                    }
-                    onClick={() => setTierFilter(t.id)}
-                  >
-                    {t.gem} {t.shortLabel}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Skin Grid */}
             <div className="skinGrid">
               {displayedSkinEntries.map(({ hero: h, skin: s }, i) => {
                 const chosen = isSkinSelected(h.id, s.id);
-                const tierMeta = getTierMeta(s.tier);
                 const displayImg = s.image || h.image || '';
 
                 return (
@@ -1118,12 +1023,6 @@ export function App() {
                         </span>
                       )}
 
-                      <span
-                        className="skinTileTierTag"
-                        style={{ background: tierMeta.gradient }}
-                      >
-                        {tierMeta.gem} {tierMeta.shortLabel}
-                      </span>
 
                       {chosen && <b className="check">✓</b>}
                     </div>
@@ -1181,9 +1080,6 @@ export function App() {
               </div>
 
               <div className="autoSortToolbar">
-                <button className="sortActionBtn" onClick={sortSkinsByTier}>
-                  <ArrowUpDown size={14} /> เรียงตามระดับความแรร์ (Tier สูง → ต่ำ)
-                </button>
                 <button className="sortActionBtn" onClick={sortSkinsByHero}>
                   <Layers size={14} /> เรียงตามฮีโร่ (A → Z)
                 </button>
@@ -1210,7 +1106,6 @@ export function App() {
 
                 <div className="arrangeList">
                   {selectedSkins.map((item, i) => {
-                    const tierMeta = getTierMeta(item.tier);
                     const heroObj = heroesById[item.heroId];
                     const imgSrc = item.image || heroObj?.image || '';
 
@@ -1249,28 +1144,6 @@ export function App() {
                           <b>{item.name}</b>
                           <small>{item.heroName}</small>
                         </div>
-
-                        {/* Inline Tier Changer */}
-                        <select
-                          className="inlineTierSelect"
-                          value={item.tier}
-                          onChange={(e) =>
-                            handleUpdateSkin(item.heroId, item.skinId, {
-                              tier: e.target.value,
-                            })
-                          }
-                          style={{
-                            background: tierMeta.softBg,
-                            color: tierMeta.textColor,
-                            borderColor: tierMeta.borderColor,
-                          }}
-                        >
-                          {SKIN_TIERS.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.gem} {t.shortLabel}
-                            </option>
-                          ))}
-                        </select>
 
                         <div className="moveBtns">
                           <button
@@ -1752,34 +1625,6 @@ export function App() {
                 </div>
 
                 <div className="checkboxRowGroup">
-                  <label className="toggleSwitchLabel">
-                    <input
-                      type="checkbox"
-                      checked={layout.showTierBadge}
-                      onChange={(e) =>
-                        setLayout({
-                          ...layout,
-                          showTierBadge: e.target.checked,
-                        })
-                      }
-                    />
-                    <span>แสดงป้ายระดับสกิน (Tier Badge)</span>
-                  </label>
-
-                  <label className="toggleSwitchLabel">
-                    <input
-                      type="checkbox"
-                      checked={layout.showTierSummary}
-                      onChange={(e) =>
-                        setLayout({
-                          ...layout,
-                          showTierSummary: e.target.checked,
-                        })
-                      }
-                    />
-                    <span>แสดงแถบสรุปจำนวนสกินแต่ละระดับ</span>
-                  </label>
-
                   <label className="toggleSwitchLabel">
                     <input
                       type="checkbox"
