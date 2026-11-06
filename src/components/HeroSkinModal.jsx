@@ -12,7 +12,7 @@ import {
   Download,
   FileUp,
 } from 'lucide-react';
-import { SKIN_TIERS, HERO_ROLES, PASTEL_PALETTE, getTierMeta } from '../data/defaultCatalog';
+import { HERO_ROLES, PASTEL_PALETTE } from '../data/defaultCatalog';
 import { compressImageFile } from '../utils/imageHelper';
 
 export default function HeroSkinModal({
@@ -40,7 +40,6 @@ export default function HeroSkinModal({
   const [newHeroImage, setNewHeroImage] = useState('');
 
   const [newSkinName, setNewSkinName] = useState('');
-  const [newSkinTier, setNewSkinTier] = useState('Supreme');
   const [newSkinImage, setNewSkinImage] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
 
@@ -108,7 +107,6 @@ export default function HeroSkinModal({
     if (!newSkinName.trim()) return;
     onAddSkin(currentHero.id, {
       name: newSkinName.trim(),
-      tier: newSkinTier,
       image: newSkinImage.trim(),
     });
     setNewSkinName('');
@@ -380,16 +378,6 @@ export default function HeroSkinModal({
                   onChange={(e) => setNewSkinName(e.target.value)}
                   required
                 />
-                <select
-                  value={newSkinTier}
-                  onChange={(e) => setNewSkinTier(e.target.value)}
-                >
-                  {SKIN_TIERS.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.gem} {t.shortLabel}
-                    </option>
-                  ))}
-                </select>
                 <input
                   placeholder="ลิงก์ URL รูปสกิน (ถ้ามี)..."
                   value={newSkinImage}
@@ -416,12 +404,11 @@ export default function HeroSkinModal({
               <b>
                 รายการสกินของ {currentHero.name} ({currentHero.skins.length} สกิน)
               </b>
-              <small>สามารถเปลี่ยนชื่อ ระดับป้าย Tier และใส่รูปภาพของแต่ละสกินได้ทันที</small>
+              <small>สามารถเปลี่ยนชื่อและใส่รูปภาพของแต่ละสกินได้ทันที</small>
             </div>
 
             <div className="skinEditorList">
               {currentHero.skins.map((skin, idx) => {
-                const tierMeta = getTierMeta(skin.tier);
                 return (
                   <div key={skin.id} className="skinEditorRow">
                     <div
@@ -460,25 +447,6 @@ export default function HeroSkinModal({
                           }
                           placeholder="ชื่อสกิน"
                         />
-                        <select
-                          value={skin.tier || 'Normal'}
-                          onChange={(e) =>
-                            onUpdateSkin(currentHero.id, skin.id, {
-                              tier: e.target.value,
-                            })
-                          }
-                          style={{
-                            background: tierMeta.softBg,
-                            color: tierMeta.textColor,
-                            borderColor: tierMeta.borderColor,
-                          }}
-                        >
-                          {SKIN_TIERS.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.gem} {t.shortLabel}
-                            </option>
-                          ))}
-                        </select>
                       </div>
 
                       <div className="skinEditorBottomRow">

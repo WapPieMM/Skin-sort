@@ -1,94 +1,3 @@
-export const SKIN_TIERS = [
-  {
-    id: 'Dimension',
-    label: 'DIMENSION BREAKER',
-    shortLabel: 'DIMENSION',
-    order: 1,
-    gradient: 'linear-gradient(135deg, #c283e8 0%, #f18ab8 52%, #9a8cf2 100%)',
-    softBg: '#f8ecfe',
-    textColor: '#7a3ea1',
-    borderColor: '#d9aef5',
-    gem: '✦',
-  },
-  {
-    id: 'Supreme',
-    label: 'SUPREME /Collector',
-    shortLabel: 'SUPREME',
-    order: 2,
-    gradient: 'linear-gradient(135deg, #e5a967 0%, #f3c88b 50%, #d48996 100%)',
-    softBg: '#fdf4ea',
-    textColor: '#945b27',
-    borderColor: '#edd0ae',
-    gem: '♛',
-  },
-  {
-    id: 'Miracle',
-    label: 'MIRACLE',
-    shortLabel: 'MIRACLE',
-    order: 3,
-    gradient: 'linear-gradient(135deg, #e37b9f 0%, #f3a1b8 50%, #c6699b 100%)',
-    softBg: '#fdedf3',
-    textColor: '#9c3b61',
-    borderColor: '#f2bfd0',
-    gem: '❖',
-  },
-  {
-    id: 'Mythical',
-    label: 'MYTHICAL',
-    shortLabel: 'MYTHICAL',
-    order: 4,
-    gradient: 'linear-gradient(135deg, #7ea8f4 0%, #a5c6ff 52%, #9a8df2 100%)',
-    softBg: '#edf3ff',
-    textColor: '#3a5fa8',
-    borderColor: '#bfd4fc',
-    gem: '✧',
-  },
-  {
-    id: 'Legend',
-    label: 'LEGEND',
-    shortLabel: 'LEGEND',
-    order: 5,
-    gradient: 'linear-gradient(135deg, #eaa07a 0%, #f5be9b 55%, #dc8697 100%)',
-    softBg: '#fef1ea',
-    textColor: '#995232',
-    borderColor: '#f3cab5',
-    gem: '★',
-  },
-  {
-    id: 'Limited',
-    label: 'LIMITED',
-    shortLabel: 'LIMITED',
-    order: 6,
-    gradient: 'linear-gradient(135deg, #d68cb8 0%, #eba9d0 55%, #b58cc7 100%)',
-    softBg: '#faedf6',
-    textColor: '#864770',
-    borderColor: '#e8c2dc',
-    gem: '♡',
-  },
-  {
-    id: 'Heroic',
-    label: 'HEROIC',
-    shortLabel: 'HEROIC',
-    order: 7,
-    gradient: 'linear-gradient(135deg, #7cc5b2 0%, #a4decb 55%, #7fb2d9 100%)',
-    softBg: '#ebfaf5',
-    textColor: '#337565',
-    borderColor: '#b9e6d8',
-    gem: '◇',
-  },
-  {
-    id: 'Normal',
-    label: 'NORMAL / DEFAULT',
-    shortLabel: 'NORMAL',
-    order: 8,
-    gradient: 'linear-gradient(135deg, #b8a3bf 0%, #cfc0d6 100%)',
-    softBg: '#f6f2f8',
-    textColor: '#6d5874',
-    borderColor: '#dfd3e3',
-    gem: '·',
-  },
-];
-
 export const HERO_ROLES = [
   { id: 'All', label: 'ทุกสาย (All)' },
   { id: 'Unassigned', label: 'ยังไม่ระบุสาย' },
@@ -185,12 +94,7 @@ export const DEFAULT_HEROES = [
     role: 'Support',
     image: '',
     color: '#f5d9ea',
-    skins: [
-      { id: 'alice-eternal-sailor', name: 'Eternal Sailor Chibi Moon', tier: 'Miracle', image: '' },
-      { id: 'alice-sweet-dreams', name: 'Sweet Dreams', tier: 'Limited', image: '' },
-      { id: 'alice-moonlight', name: 'Moonlight', tier: 'Legend', image: '' },
-      { id: 'alice-little-lady', name: 'Little Lady', tier: 'Heroic', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'aoi',
@@ -199,12 +103,7 @@ export const DEFAULT_HEROES = [
     role: 'Assassin',
     image: '',
     color: '#dce6ff',
-    skins: [
-      { id: 'aoi-celestial', name: 'Celestial Dragon', tier: 'Supreme', image: '' },
-      { id: 'aoi-dragon-slayer', name: 'Dragon Slayer', tier: 'Legend', image: '' },
-      { id: 'aoi-sakura', name: 'Sakura Ninja', tier: 'Limited', image: '' },
-      { id: 'aoi-default', name: 'Default', tier: 'Normal', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'allain',
@@ -213,12 +112,7 @@ export const DEFAULT_HEROES = [
     role: 'Fighter',
     image: '',
     color: '#e4d9ff',
-    skins: [
-      { id: 'allain-kirito', name: 'Kirito Dual Blades', tier: 'Miracle', image: '' },
-      { id: 'allain-dimension', name: 'Dimension Breaker', tier: 'Dimension', image: '' },
-      { id: 'allain-snow-angel', name: 'Snow Angel', tier: 'Limited', image: '' },
-      { id: 'allain-default', name: 'Default', tier: 'Normal', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'butterfly',
@@ -227,12 +121,7 @@ export const DEFAULT_HEROES = [
     role: 'Assassin',
     image: '',
     color: '#fbe5d9',
-    skins: [
-      { id: 'butterfly-phoenix', name: 'Phoenix', tier: 'Supreme', image: '' },
-      { id: 'butterfly-stacia', name: 'Asuna Stacia', tier: 'Miracle', image: '' },
-      { id: 'butterfly-floral-elf', name: 'Floral Elf', tier: 'Legend', image: '' },
-      { id: 'butterfly-summer-bash', name: 'Summer Bash', tier: 'Limited', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'krixi',
@@ -241,12 +130,7 @@ export const DEFAULT_HEROES = [
     role: 'Mage',
     image: '',
     color: '#d8f0e9',
-    skins: [
-      { id: 'krixi-terrible-tornado', name: 'Terrible Tornado', tier: 'Miracle', image: '' },
-      { id: 'krixi-crescent-moon', name: 'Crescent Moon', tier: 'Supreme', image: '' },
-      { id: 'krixi-wonderland', name: 'Wonderland', tier: 'Legend', image: '' },
-      { id: 'krixi-summer', name: 'Summer Bash', tier: 'Limited', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'lauriel',
@@ -255,12 +139,7 @@ export const DEFAULT_HEROES = [
     role: 'Mage',
     image: '',
     color: '#e9e1f6',
-    skins: [
-      { id: 'lauriel-dimension', name: 'Dimension Breaker', tier: 'Dimension', image: '' },
-      { id: 'lauriel-divine-grace', name: 'Divine Grace', tier: 'Supreme', image: '' },
-      { id: 'lauriel-angel-light', name: 'Angel of Light', tier: 'Mythical', image: '' },
-      { id: 'lauriel-crystal', name: 'Crystal Lotus', tier: 'Limited', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'violet',
@@ -269,12 +148,7 @@ export const DEFAULT_HEROES = [
     role: 'Carry',
     image: '',
     color: '#f5d9ea',
-    skins: [
-      { id: 'violet-dimension', name: 'Dimension Breaker', tier: 'Dimension', image: '' },
-      { id: 'violet-celestial', name: 'Celestial Empress', tier: 'Supreme', image: '' },
-      { id: 'violet-wedding', name: 'Wedding Day', tier: 'Legend', image: '' },
-      { id: 'violet-summer-bash', name: 'Summer Bash', tier: 'Limited', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'yena',
@@ -283,12 +157,7 @@ export const DEFAULT_HEROES = [
     role: 'Fighter',
     image: '',
     color: '#dce6ff',
-    skins: [
-      { id: 'yena-lunar', name: 'Lunar Empress', tier: 'Supreme', image: '' },
-      { id: 'yena-wave', name: 'WaVe Idol', tier: 'Mythical', image: '' },
-      { id: 'yena-moonlight', name: 'Moonlight', tier: 'Legend', image: '' },
-      { id: 'yena-celestial', name: 'Celestial Dance', tier: 'Limited', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'telannas',
@@ -297,12 +166,7 @@ export const DEFAULT_HEROES = [
     role: 'Carry',
     image: '',
     color: '#e4d9ff',
-    skins: [
-      { id: 'tel-dimension', name: 'Dimension Breaker', tier: 'Dimension', image: '' },
-      { id: 'tel-eternal', name: 'F.E.E.L Eternal', tier: 'Supreme', image: '' },
-      { id: 'tel-silverwing', name: 'Silverwing', tier: 'Mythical', image: '' },
-      { id: 'tel-love-sworn', name: 'Love Sworn', tier: 'Limited', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'nakroth',
@@ -311,12 +175,7 @@ export const DEFAULT_HEROES = [
     role: 'Assassin',
     image: '',
     color: '#fbe5d9',
-    skins: [
-      { id: 'nak-dimension', name: 'Dimension Breaker', tier: 'Dimension', image: '' },
-      { id: 'nak-thunder-god', name: 'Celestial Thunder', tier: 'Supreme', image: '' },
-      { id: 'nak-aic', name: 'AIC Champion', tier: 'Limited', image: '' },
-      { id: 'nak-cybercore', name: 'Bboy Tech', tier: 'Mythical', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'liliana',
@@ -325,12 +184,7 @@ export const DEFAULT_HEROES = [
     role: 'Mage',
     image: '',
     color: '#d8f0e9',
-    skins: [
-      { id: 'lili-wave', name: 'WaVe Superstar', tier: 'Supreme', image: '' },
-      { id: 'lili-mirage', name: 'Nine-Tailed Mirage', tier: 'Mythical', image: '' },
-      { id: 'lili-melody', name: 'Melody of Love', tier: 'Limited', image: '' },
-      { id: 'lili-idol', name: 'Idol Fox', tier: 'Legend', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'hayate',
@@ -339,12 +193,7 @@ export const DEFAULT_HEROES = [
     role: 'Carry',
     image: '',
     color: '#e9e1f6',
-    skins: [
-      { id: 'hayate-yin-yang', name: 'Fatal Duo', tier: 'Supreme', image: '' },
-      { id: 'hayate-astral', name: 'Astral Walker', tier: 'Mythical', image: '' },
-      { id: 'hayate-phantom', name: 'Phantom Mask', tier: 'Limited', image: '' },
-      { id: 'hayate-crimson', name: 'Crimson Shadow', tier: 'Heroic', image: '' },
-    ],
+    skins: [],
   },
   {
     id: 'airi',
@@ -1364,7 +1213,3 @@ export const DEFAULT_HEROES = [
     skins: [],
   },
 ];
-
-export function getTierMeta(tierId) {
-  return SKIN_TIERS.find((t) => t.id === tierId) || SKIN_TIERS[SKIN_TIERS.length - 1];
-}
