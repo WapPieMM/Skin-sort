@@ -808,18 +808,6 @@ button {
   font: 600 28px 'Playfair Display', serif;
 }
 
-.skinTileTierTag {
-  position: absolute;
-  left: 6px;
-  bottom: 6px;
-  padding: 3px 8px;
-  border-radius: 99px;
-  font: 700 9px 'DM Sans', sans-serif;
-  letter-spacing: 0.5px;
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(90, 52, 94, 0.28);
-}
-
 .check {
   position: absolute;
   right: 7px;
@@ -1408,47 +1396,6 @@ button {
 }
 
 /* Tier Breakdown Summary Bar */
-.posterTierSummaryBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid #ecd9ea;
-  border-radius: 14px;
-  padding: 8px 14px;
-  z-index: 2;
-}
-
-.tierSummaryLabel {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #7f5d84;
-}
-
-.tierSummaryItems {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-}
-
-.tierSummaryChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 99px;
-  border: 1px solid;
-  font-size: 10.5px;
-  font-weight: 700;
-}
-
-.tierSummaryChip i {
-  font-style: normal;
-}
-
 /* Poster Skin Grid */
 .posterSkinGrid {
   display: grid;
@@ -1521,19 +1468,6 @@ button {
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 99px;
-}
-
-.posterTierBadge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 3px 8px;
-  border-radius: 99px;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 6px rgba(80, 45, 85, 0.25);
 }
 
 .posterCardCaption {
