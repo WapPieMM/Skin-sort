@@ -55,11 +55,14 @@ export function loadImageElement(src, timeoutMs = 6500) {
 
 /**
  * Automatically detects the 5 column spans and 2 or 3 row spans of RoV cards in a screenshot.
- * Supports iPad (4:3, 2360x1640), cropped screenshots (2360x1250), and mobile widescreen (16:9 / 19.5:9 / 20:9).
+ * Supports:
+ * 1. RoV Shop -> Skins ("ร้านค้า -> สกิน", 5x2 = 10 cards with "มีแล้ว" button bar at bottom, like 7A31B370.jpeg)
+ * 2. RoV Hero / Skin List ("รายชื่อฮีโร่", 5x3 = 15 cards with partial Row 3, or 5x2 = 10 cards, like IMG_0442)
+ * Works across iPad (4:3, 2360x1640), cropped screenshots (2360x1250), and mobile widescreen (16:9 / 19.5:9 / 20:9).
  *
  * @param {HTMLImageElement} img
- * @param {'auto' | '5x3' | '5x2'} gridMode
- * @returns {Array<{ index: number, row: number, col: number, x: number, y: number, width: number, height: number, portraitHeight: number }>}
+ * @param {'auto' | 'shop' | '5x3' | '5x2'} gridMode
+ * @returns {Array<{ index: number, row: number, col: number, x: number, y: number, width: number, height: number, portraitHeight: number, layoutType: 'shop' | 'herolist' }>}
  */
 export function detectRoVCardBoxes(img, gridMode = 'auto') {
   const W = img.naturalWidth || img.width;
@@ -84,24 +87,24 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
     return [data[i], data[i + 1], data[i + 2]];
   };
 
-  // Sample background color in the gap between left menu and card grid (~x = 21.8% of width, y = 25% of height)
-  const bgSample = getRGB(sw * 0.218, sh * 0.25);
-
-  // 1. Scan horizontal profile in the upper-middle band (y = 16% .. 34% of height) for x > 18% of width
-  const yBandStart = Math.round(sh * 0.16);
-  const yBandEnd = Math.round(sh * 0.34);
-  const xStartSearch = Math.round(sw * 0.18);
+  // 1. Scan horizontal profile in y = 22% .. 36% of height for x in 18.2% .. 98.5% of width,
+  // comparing each pixel (x, y) against the clean right-margin background at the SAME y (x = 98.8% of width).
+  const yBandStart = Math.round(sh * 0.22);
+  const yBandEnd = Math.round(sh * 0.36);
+  const xStartSearch = Math.round(sw * 0.182);
+  const xEndSearch = Math.round(sw * 0.985);
 
   const xDiff = new Float32Array(sw);
-  for (let x = xStartSearch; x < sw; x++) {
+  for (let x = xStartSearch; x < xEndSearch; x++) {
     let sum = 0;
     let count = 0;
-    for (let y = yBandStart; y < yBandEnd; y += 2) {
+    for (let y = yBandStart; y <= yBandEnd; y += 2) {
+      const bg = getRGB(sw * 0.988, y);
       const [r, g, b] = getRGB(x, y);
       sum +=
-        Math.abs(r - bgSample[0]) +
-        Math.abs(g - bgSample[1]) +
-        Math.abs(b - bgSample[2]);
+        Math.abs(r - bg[0]) +
+        Math.abs(g - bg[1]) +
+        Math.abs(b - bg[2]);
       count++;
     }
     xDiff[x] = count > 0 ? sum / count : 0;
@@ -129,34 +132,57 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
   };
 
   let colSegs = null;
-  for (const thresh of [46, 40, 52, 35, 60]) {
+  for (const thresh of [46, 40, 52, 35, 60, 68]) {
     const candidate = findSegments(
       xDiff,
       xStartSearch,
-      sw,
+      xEndSearch,
       thresh,
       Math.round(sw * 0.08)
     );
     if (candidate.length === 5) {
-      const widths = candidate.map(([a, b]) => b - a + 1);
-      const avgW = widths.reduce((a, b) => a + b, 0) / 5;
-      const maxDev = Math.max(...widths.map((w) => Math.abs(w - avgW) / avgW));
-      if (maxDev < 0.12) {
-        colSegs = candidate;
+      // Columns 2..5 are surrounded by clean gutters; use their median width & uniform grid stride
+      // to regularize all 5 columns so left-menu glow or dark jacket edges never shift Column 1.
+      const widths25 = candidate
+        .slice(1)
+        .map(([a, b]) => b - a + 1)
+        .sort((a, b) => a - b);
+      const medW = widths25[1];
+      const maxDev25 = Math.max(
+        ...widths25.map((w) => Math.abs(w - medW) / Math.max(1, medW))
+      );
+      if (maxDev25 < 0.09) {
+        // Compute uniform stride from Columns 2..5 right edges (which are immune to left-menu glow)
+        const stride = (candidate[4][1] - candidate[1][1]) / 3;
+        const col4Right = candidate[4][1];
+        colSegs = [0, 1, 2, 3, 4].map((c) => {
+          const right = Math.round(col4Right - (4 - c) * stride);
+          const left = Math.round(right - medW + 1);
+          return [left, right];
+        });
         break;
       }
     }
   }
 
-  // Fallback column coordinates based on standard RoV 5-column layout (calibrated from IMG_0442: 2360px width)
+  // Fallback column coordinates if custom aspect ratio
   if (!colSegs) {
-    const colFractions = [
-      [540 / 2360, 856 / 2360],
-      [898 / 2360, 1214 / 2360],
-      [1255 / 2360, 1572 / 2360],
-      [1613 / 2360, 1930 / 2360],
-      [1971 / 2360, 2287 / 2360],
-    ];
+    const colFractions =
+      gridMode === 'shop'
+        ? [
+            [459 / 2360, 799 / 2360],
+            [821 / 2360, 1160 / 2360],
+            [1182 / 2360, 1522 / 2360],
+            [1544 / 2360, 1883 / 2360],
+            [1905 / 2360, 2245 / 2360],
+          ]
+        : [
+            [540 / 2360, 856 / 2360],
+            [898 / 2360, 1214 / 2360],
+            [1255 / 2360, 1572 / 2360],
+            [1613 / 2360, 1930 / 2360],
+            [1971 / 2360, 2287 / 2360],
+          ];
     colSegs = colFractions.map(([f0, f1]) => [
       Math.round(f0 * sw),
       Math.round(f1 * sw),
@@ -165,11 +191,30 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
 
   const avgCardW =
     colSegs.reduce((acc, [a, b]) => acc + (b - a + 1), 0) / colSegs.length;
+  const col1StartRatio = colSegs[0][0] / sw;
 
-  // 2. Scan vertical profile across the 5 detected columns to locate Row 1, Row 2, and Row 3
-  const yDiff = new Float32Array(sh);
+  // 2. Scan vertical profile comparing the 5 columns against the 4 inter-column gutters at the SAME y
+  const gutterXs = [];
+  for (let i = 0; i < 4; i++) {
+    gutterXs.push(Math.round((colSegs[i][1] + colSegs[i + 1][0]) / 2));
+  }
+
   const yStartSearch = Math.round(sh * 0.07);
+  const yRowDiff = new Float32Array(sh);
   for (let y = yStartSearch; y < sh; y++) {
+    let gr = 0;
+    let gg = 0;
+    let gb = 0;
+    for (const gx of gutterXs) {
+      const [r, g, b] = getRGB(gx, y);
+      gr += r;
+      gg += g;
+      gb += b;
+    }
+    gr /= 4;
+    gg /= 4;
+    gb /= 4;
+
     let sum = 0;
     let count = 0;
     for (const [x0, x1] of colSegs) {
@@ -177,37 +222,62 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
       for (let x = x0 + pad; x <= x1 - pad; x += 4) {
         const [r, g, b] = getRGB(x, y);
         sum +=
-          Math.abs(r - bgSample[0]) +
-          Math.abs(g - bgSample[1]) +
-          Math.abs(b - bgSample[2]);
+          Math.abs(r - gr) + Math.abs(g - gg) + Math.abs(b - gb);
         count++;
       }
     }
-    yDiff[y] = count > 0 ? sum / count : 0;
+    yRowDiff[y] = count > 0 ? sum / count : 0;
   }
 
-  let rowSegs = null;
-  for (const thresh of [58, 52, 65, 45, 72]) {
-    const candidate = findSegments(
-      yDiff,
-      yStartSearch,
-      sh,
-      thresh,
-      Math.round(avgCardW * 0.65)
-    );
-    if (candidate.length >= 2 && candidate.length <= 3) {
-      rowSegs = candidate;
+  // Locate exact top of Row 1 (first sustained card band where yRowDiff > 26 for at least 0.25 * avgCardW)
+  let r1Top = Math.round(
+    sw * (col1StartRatio < 0.212 ? 315 / 2360 : 168 / 2360)
+  );
+  const minSustainedH = Math.max(12, Math.round(avgCardW * 0.25));
+  for (let y = yStartSearch; y < Math.round(sh * 0.36); y++) {
+    let sustained = true;
+    for (let dy = 0; dy < minSustainedH && y + dy < sh; dy++) {
+      if (yRowDiff[y + dy] <= 26) {
+        sustained = false;
+        break;
+      }
+    }
+    if (sustained) {
+      r1Top = y;
       break;
     }
   }
 
-  // Determine exact full card height (~1.577 * cardWidth in RoV, i.e., 500px when cardWidth is 317px)
-  const expectedFullCardH = avgCardW * (500 / 317);
-  const expectedRowGap = avgCardW * (50 / 317);
+  // Distinguish Shop Screen ("ร้านค้า -> สกิน") vs Hero/Skin List Screen ("รายชื่อฮีโร่")
+  // In Shop screen: Col 1 starts around 19.45% of width (< 21.2%), and Row 1 starts around y = 315/2360 (~13.35% of width)
+  const isShopScreen =
+    gridMode === 'shop' ||
+    (gridMode !== '5x3' && (col1StartRatio < 0.212 || r1Top / sw > 0.108));
 
-  if (!rowSegs || rowSegs.length < 2) {
-    // Calibrated fallback from IMG_0442: Row 1 starts at y = 168/2360 * W
-    const r1Top = Math.round(sw * (168 / 2360));
+  let rowSegs = [];
+  if (isShopScreen) {
+    // Shop screen ("ร้านค้า -> สกิน"):
+    // Full card height (portrait + "มีแล้ว" bar) = 623 / 340.6 * cardWidth (~1.829 * cardWidth)
+    // Row gap = 42.5 / 340.6 * cardWidth (~0.125 * cardWidth)
+    const shopFullCardH = avgCardW * (623 / 340.6);
+    const shopRowGap = avgCardW * (42.5 / 340.6);
+    const r1Bot = Math.min(sh - 1, Math.round(r1Top + shopFullCardH));
+    const r2Top = Math.round(r1Bot + shopRowGap);
+    const r2Bot = Math.min(sh - 1, Math.round(r2Top + shopFullCardH));
+    rowSegs = [
+      [r1Top, r1Bot],
+      [r2Top, r2Bot],
+    ];
+    const r3Top = Math.round(r2Bot + shopRowGap);
+    if (sh - r3Top >= avgCardW * 0.65) {
+      rowSegs.push([r3Top, sh - 1]);
+    }
+  } else {
+    // Hero/Skin List screen ("รายชื่อฮีโร่"):
+    // Full card height (portrait + mastery bar) = 500 / 317 * cardWidth (~1.577 * cardWidth)
+    // Row gap = 50 / 317 * cardWidth (~0.158 * cardWidth)
+    const expectedFullCardH = avgCardW * (500 / 317);
+    const expectedRowGap = avgCardW * (50 / 317);
     const r1Bot = Math.min(sh - 1, Math.round(r1Top + expectedFullCardH));
     const r2Top = Math.round(r1Bot + expectedRowGap);
     const r2Bot = Math.min(sh - 1, Math.round(r2Top + expectedFullCardH));
@@ -216,36 +286,17 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
       [r2Top, r2Bot],
     ];
     const r3Top = Math.round(r2Bot + expectedRowGap);
-    if (sh - r3Top >= avgCardW * 0.7) {
-      rowSegs.push([r3Top, sh - 1]);
-    }
-  } else {
-    // Refine row heights in case the thin dark gap above the blue mastery bar split or extended a segment
-    const r1Top = rowSegs[0][0];
-    const r1Bot = Math.min(sh - 1, Math.round(r1Top + expectedFullCardH));
-    const r2Top =
-      rowSegs[1]?.[0] ?? Math.round(r1Bot + expectedRowGap);
-    const r2Bot = Math.min(sh - 1, Math.round(r2Top + expectedFullCardH));
-    const refined = [
-      [r1Top, r1Bot],
-      [r2Top, r2Bot],
-    ];
-    const r3Top =
-      rowSegs[2]?.[0] ?? Math.round(r2Bot + expectedRowGap);
     if (sh - r3Top >= avgCardW * 0.65) {
-      refined.push([r3Top, sh - 1]);
-    }
-    rowSegs = refined;
-  }
-
-  // Apply explicit gridMode override if requested by user ('5x3' vs '5x2')
-  if (gridMode === '5x2' && rowSegs.length > 2) {
-    rowSegs = rowSegs.slice(0, 2);
-  } else if (gridMode === '5x3' && rowSegs.length === 2) {
-    const r2Bot = rowSegs[1][1];
-    const r3Top = Math.round(r2Bot + expectedRowGap);
-    if (r3Top < sh - 20) {
       rowSegs.push([r3Top, sh - 1]);
+    }
+
+    // Apply explicit gridMode override if requested by user ('5x3' vs '5x2')
+    if (gridMode === '5x2' && rowSegs.length > 2) {
+      rowSegs = rowSegs.slice(0, 2);
+    } else if (gridMode === '5x3' && rowSegs.length === 2) {
+      if (r3Top < sh - 20) {
+        rowSegs.push([r3Top, sh - 1]);
+      }
     }
   }
 
@@ -263,8 +314,10 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
         H - y,
         Math.round((sy1 - sy0 + 1) / scale)
       );
-      // True portrait artwork height (equivalent to 306x427 catalog card) derived from card width
+      // Base portrait artwork height (equivalent to 306x427 catalog card)
       const portraitHeight = Math.round(width * PORTRAIT_ASPECT);
+      // In Shop screen, the portrait frame above "มีแล้ว" extends up to 537/340.6 * width
+      const shopPortraitHeight = Math.round(width * (537 / 340.6));
 
       boxes.push({
         index: idx++,
@@ -275,6 +328,8 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
         width,
         height: visibleHeight,
         portraitHeight,
+        shopPortraitHeight,
+        layoutType: isShopScreen ? 'shop' : 'herolist',
       });
     }
   }
@@ -646,27 +701,37 @@ export async function scanScreenshotForSkins({
   thumbCanvas.height = thumbH;
   const thumbCtx = thumbCanvas.getContext('2d');
 
-  // Alignment micro-offsets to test (compensates for slight border/zoom differences between game & catalog)
+  // Alignment micro-offsets & aspect ratios to test:
+  // Covers both Hero List portraits (aspect ~1.347), 306x427 catalog cards (aspect ~1.395),
+  // and Shop Skin portraits above the "มีแล้ว" bar (aspect ~1.48..1.575).
   const offsets = [
-    { dx: 0, dy: 0.018, scale: 1.0 },
-    { dx: 0, dy: 0, scale: 1.0 },
-    { dx: 0, dy: 0.035, scale: 0.98 },
-    { dx: -0.015, dy: 0.018, scale: 0.98 },
-    { dx: 0.015, dy: 0.018, scale: 0.98 },
-    { dx: 0, dy: 0.018, scale: 0.95 },
+    { dx: 0, dy: 0.018, scale: 1.0, aspectMul: 1.0 },
+    { dx: 0, dy: 0, scale: 1.0, aspectMul: 1.0 },
+    { dx: 0, dy: 0, scale: 1.0, aspectMul: 1.036 },
+    { dx: 0, dy: 0.02, scale: 0.98, aspectMul: 1.036 },
+    { dx: 0, dy: 0, scale: 1.0, aspectMul: 1.12 },
+    { dx: 0, dy: 0, scale: 1.0, aspectMul: 1.169 },
+    { dx: 0, dy: 0.02, scale: 0.92, aspectMul: 1.169 },
+    { dx: 0, dy: 0.035, scale: 0.98, aspectMul: 1.0 },
   ];
 
+  const isShopLayout = boxes[0]?.layoutType === 'shop';
+
   const slots = boxes.map((box) => {
-    // Create thumbnail of the detected card slot
+    // Create thumbnail of the detected card slot (excluding bottom "มีแล้ว" or mastery bar)
     thumbCtx.fillStyle = '#191838';
     thumbCtx.fillRect(0, 0, thumbW, thumbH);
-    const visRatio = Math.min(1, box.height / Math.max(1, box.portraitHeight));
+    const displayPortH =
+      box.layoutType === 'shop'
+        ? box.shopPortraitHeight || box.portraitHeight
+        : box.portraitHeight;
+    const visRatio = Math.min(1, box.height / Math.max(1, displayPortH));
     thumbCtx.drawImage(
       img,
       box.x,
       box.y,
       box.width,
-      Math.min(box.height, box.portraitHeight),
+      Math.min(box.height, displayPortH),
       0,
       0,
       thumbW,
@@ -676,10 +741,11 @@ export async function scanScreenshotForSkins({
 
     // Extract patches across alignment offsets for this card
     const cardPatches = offsets.map((off) => {
+      const targetPortH = box.portraitHeight * (off.aspectMul || 1.0);
       const sx = box.x + box.width * off.dx + (box.width * (1 - off.scale)) / 2;
-      const sy = box.y + box.portraitHeight * off.dy;
+      const sy = box.y + targetPortH * off.dy;
       const sw = box.width * off.scale;
-      const sh = box.portraitHeight * off.scale;
+      const sh = targetPortH * off.scale;
       const maxVisH = Math.max(10, box.y + box.height - sy);
       return extractNormalizedPatch(workCtx, img, sx, sy, sw, sh, maxVisH);
     });
@@ -722,10 +788,15 @@ export async function scanScreenshotForSkins({
     };
   });
 
+  const detectedRows = boxes.length > 10 ? 3 : 2;
   return {
     fileName: file.name,
     screenshotUrl: dataUrl,
-    detectedRows: boxes.length > 10 ? 3 : 2,
+    detectedRows,
+    layoutType: isShopLayout ? 'shop' : 'herolist',
+    layoutLabel: isShopLayout
+      ? `หน้าร้านค้าสกิน (5×${detectedRows})`
+      : `หน้ารายชื่อฮีโร่/สกิน (5×${detectedRows})`,
     totalSlots: boxes.length,
     slots,
   };

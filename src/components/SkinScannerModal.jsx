@@ -370,9 +370,10 @@ export default function SkinScannerModal({
             <label className="scannerControlLabel">รูปแบบตารางในภาพ:</label>
             <div className="scannerModePills">
               {[
-                { id: 'auto', label: 'อัตโนมัติ (5×3 / 5×2)' },
-                { id: '5x3', label: '5×3 (15 ใบ · รวมแถว 3 ครึ่งใบ)' },
-                { id: '5x2', label: '5×2 (10 ใบ)' },
+                { id: 'auto', label: 'อัตโนมัติ (ตรวจจับเอง)' },
+                { id: 'shop', label: 'ร้านค้าสกิน (5×2)' },
+                { id: '5x3', label: 'หน้าฮีโร่ 5×3 (15 ใบ)' },
+                { id: '5x2', label: 'หน้าฮีโร่ 5×2 (10 ใบ)' },
               ].map((m) => (
                 <button
                   key={m.id}
@@ -481,18 +482,18 @@ export default function SkinScannerModal({
                 คลิกเพื่อเลือกรูปแคปหน้าจอ RoV หรือลากไฟล์มาวางที่นี่ (กด Ctrl+V เพื่อวางได้)
               </h4>
               <p>
-                รองรับภาพหน้าฮีโร่และหน้าสกินแบบ <b>5×3 (15 ใบ รวมแถวล่างครึ่งใบ)</b>{' '}
-                และ <b>5×2 (10 ใบ)</b> · อัปโหลดพร้อมกันหลายภาพได้เลย
+                รองรับทั้ง <b>หน้าร้านค้า → สกิน (5×2 มีปุ่ม “มีแล้ว”)</b> และ{' '}
+                <b>หน้ารายชื่อฮีโร่/สกินแบบ 5×3 (15 ใบ รวมแถวล่างครึ่งใบ) / 5×2 (10 ใบ)</b>
               </p>
               <div className="scannerZoneDiagram">
                 <span className="zoneTag ignored">
-                  ✗ ข้ามป้ายมุมขวาบน (Collab / Tier)
+                  ✗ ข้ามป้ายมุมขวาบน (Limited / Collab / Tier)
                 </span>
                 <span className="zoneTag matched">
                   ✓ เทียบโซนกลางภาพ (ใบหน้า & ชุดตัวละคร)
                 </span>
                 <span className="zoneTag ignored">
-                  ✗ ข้ามชื่อฮีโร่ & แต้มความชำนาญด้านล่าง
+                  ✗ ข้ามปุ่ม “มีแล้ว” / ชื่อ / แต้มด้านล่าง
                 </span>
               </div>
             </div>
@@ -527,8 +528,12 @@ export default function SkinScannerModal({
                           ภาพที่ #{pageIdx + 1}: {page.fileName}
                         </b>
                         <small className="tabular">
-                          ตรวจพบตาราง 5×{page.detectedRows} ({page.totalSlots}{' '}
-                          ใบ) · แมตช์เจอในคลัง{' '}
+                          ตรวจพบ{' '}
+                          <b>
+                            {page.layoutLabel ||
+                              `ตาราง 5×${page.detectedRows}`}
+                          </b>{' '}
+                          ({page.totalSlots} ใบ) · แมตช์เจอในคลัง{' '}
                           <strong className="textSuccess">
                             {pageMatchedCount} ใบ
                           </strong>{' '}
