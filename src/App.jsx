@@ -29,6 +29,7 @@ import HeroSkinModal from './components/HeroSkinModal';
 import PosterCanvas from './components/PosterCanvas';
 import FloatingScratchpad from './components/FloatingScratchpad';
 import SkinScannerModal from './components/SkinScannerModal';
+import { warmUpCatalogSkinIndexInBackground } from './utils/skinScanner';
 import { loadCatalogFromIndexedDB, saveCatalogToIndexedDB } from './utils/catalogStorage';
 
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
@@ -375,6 +376,11 @@ export function App() {
     saveCatalogToIndexedDB(heroes).catch(() => {
       notify('บันทึกข้อมูลไม่สำเร็จ พื้นที่จัดเก็บอาจเต็ม กรุณาสำรองข้อมูล JSON');
     });
+    // Quietly warm up and persist the skin scanner patch cache in the background
+    const timer = setTimeout(() => {
+      warmUpCatalogSkinIndexInBackground(heroes);
+    }, 600);
+    return () => clearTimeout(timer);
   }, [heroes, isCatalogLoaded]);
 
   useEffect(() => {

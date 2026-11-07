@@ -52,3 +52,48 @@ export async function saveCatalogToIndexedDB(heroes) {
     db.close();
   }
 }
+
+const SCANNER_PATCH_CACHE_KEY = 'skin_scanner_patches_v1';
+
+export async function loadScannerPatchCacheFromIndexedDB() {
+  try {
+    const db = await openCatalogDatabase();
+    try {
+      return await new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const request = transaction
+          .objectStore(STORE_NAME)
+          .get(SCANNER_PATCH_CACHE_KEY);
+        request.onsuccess = () => resolve(request.result || {});
+        request.onerror = () => resolve({});
+        transaction.onabort = () => resolve({});
+      });
+    } finally {
+      db.close();
+    }
+  } catch {
+    return {};
+  }
+}
+
+export async function saveScannerPatchCacheToIndexedDB(patchMap) {
+  try {
+    const db = await openCatalogDatabase();
+    try {
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        transaction
+          .objectStore(STORE_NAME)
+          .put(patchMap, SCANNER_PATCH_CACHE_KEY);
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
+    } finally {
+      db.close();
+    }
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+

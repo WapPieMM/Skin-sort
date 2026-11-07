@@ -12,14 +12,23 @@
  *   and outlier-trimmed pixel correlation.
  */
 
+import {
+  loadScannerPatchCacheFromIndexedDB,
+  saveScannerPatchCacheToIndexedDB,
+} from './catalogStorage';
+
 const PORTRAIT_ASPECT = 427 / 317; // Exact ratio of RoV portrait artwork height to card width (~1.347)
 const DESC_W = 36;
 const DESC_H = 48;
 
+// In-memory cache of imageUrl -> { data: Uint8Array, visibleRows: number }
+let memoryPatchCache = null;
+let ongoingWarmupPromise = null;
+
 /**
- * Loads an image URL or Data URL into an HTMLImageElement.
+ * Loads an image URL or Data URL into an HTMLImageElement with timeout protection.
  */
-export function loadImageElement(src) {
+export function loadImageElement(src, timeoutMs = 6500) {
   return new Promise((resolve, reject) => {
     if (!src) {
       reject(new Error('Empty image source'));
@@ -27,8 +36,19 @@ export function loadImageElement(src) {
     }
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Failed to load image'));
+    const timer = setTimeout(() => {
+      img.onload = null;
+      img.onerror = null;
+      reject(new Error('Image load timeout'));
+    }, timeoutMs);
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(img);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error('Failed to load image'));
+    };
     img.src = src;
   });
 }
@@ -417,12 +437,19 @@ function computeBadgeMaskedSimilarity(cardPatch, catPatch) {
 
 /**
  * Precomputes normalized patches for all skins in the website catalog.
+ * - Uses persistent IndexedDB cache + in-memory cache so once indexed, subsequent page loads
+ *   or modal opens are instant (< 0.05s) without re-downloading images from Cloud.
+ * - Any uncached/new skins are fetched in parallel batches of 24 simultaneously.
  */
-export async function buildCatalogSkinIndex(heroes, onProgress) {
-  const workCanvas = document.createElement('canvas');
-  workCanvas.width = DESC_W;
-  workCanvas.height = DESC_H;
-  const ctx = workCanvas.getContext('2d', { willReadFrequently: true });
+export async function buildCatalogSkinIndex(heroes, onProgress, forceRebuild = false) {
+  if (!memoryPatchCache || forceRebuild) {
+    if (forceRebuild) {
+      memoryPatchCache = {};
+    } else {
+      const persisted = await loadScannerPatchCacheFromIndexedDB();
+      memoryPatchCache = persisted && typeof persisted === 'object' ? persisted : {};
+    }
+  }
 
   const allEntries = [];
   for (const hero of heroes || []) {
@@ -440,29 +467,151 @@ export async function buildCatalogSkinIndex(heroes, onProgress) {
     }
   }
 
-  const indexed = [];
-  for (let i = 0; i < allEntries.length; i++) {
-    const entry = allEntries[i];
-    try {
-      const img = await loadImageElement(entry.image);
-      const w = img.naturalWidth || img.width;
-      const h = img.naturalHeight || img.height;
-      if (w > 0 && h > 0) {
-        const patch = extractNormalizedPatch(ctx, img, 0, 0, w, h, h);
-        indexed.push({
-          ...entry,
-          patch,
-        });
-      }
-    } catch {
-      // Skip broken catalog image
+  if (allEntries.length === 0) {
+    onProgress?.({ percent: 100, cachedCount: 0, totalCount: 0, uncachedCount: 0 });
+    return [];
+  }
+
+  // Identify unique image URLs that are not yet in the cache
+  const uncachedUrlsSet = new Set();
+  for (const entry of allEntries) {
+    const cached = memoryPatchCache[entry.image];
+    if (!cached || !cached.data || !cached.visibleRows) {
+      uncachedUrlsSet.add(entry.image);
     }
-    if (onProgress && i % 10 === 0) {
-      onProgress(Math.round(((i + 1) / Math.max(1, allEntries.length)) * 100));
+  }
+
+  const uncachedUrls = Array.from(uncachedUrlsSet);
+  const totalUniqueToFetch = uncachedUrls.length;
+  const alreadyCachedCount = allEntries.length - totalUniqueToFetch;
+
+  // If everything is already cached in IndexedDB, return immediately!
+  if (totalUniqueToFetch === 0) {
+    onProgress?.({
+      percent: 100,
+      cachedCount: allEntries.length,
+      totalCount: allEntries.length,
+      uncachedCount: 0,
+    });
+    return allEntries
+      .map((entry) => {
+        const cachedPatch = memoryPatchCache[entry.image];
+        if (!cachedPatch) return null;
+        return {
+          ...entry,
+          patch: {
+            data:
+              cachedPatch.data instanceof Uint8Array
+                ? cachedPatch.data
+                : new Uint8Array(cachedPatch.data),
+            visibleRows: cachedPatch.visibleRows,
+          },
+        };
+      })
+      .filter(Boolean);
+  }
+
+  // Otherwise, process only the missing URLs in fast parallel batches of 24
+  const workCanvas = document.createElement('canvas');
+  workCanvas.width = DESC_W;
+  workCanvas.height = DESC_H;
+  const ctx = workCanvas.getContext('2d', { willReadFrequently: true });
+
+  const CONCURRENCY = 24;
+  let completedNew = 0;
+  let newlyAddedSinceSave = 0;
+
+  onProgress?.({
+    percent: Math.round((alreadyCachedCount / Math.max(1, allEntries.length)) * 100),
+    cachedCount: alreadyCachedCount,
+    totalCount: allEntries.length,
+    uncachedCount: totalUniqueToFetch,
+  });
+
+  for (let start = 0; start < uncachedUrls.length; start += CONCURRENCY) {
+    const batch = uncachedUrls.slice(start, start + CONCURRENCY);
+    const loadedBatch = await Promise.all(
+      batch.map(async (url) => {
+        try {
+          const img = await loadImageElement(url, 6500);
+          return { url, img };
+        } catch {
+          return { url, img: null };
+        }
+      })
+    );
+
+    for (const { url, img } of loadedBatch) {
+      completedNew++;
+      if (img) {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        if (w > 0 && h > 0) {
+          const patch = extractNormalizedPatch(ctx, img, 0, 0, w, h, h);
+          memoryPatchCache[url] = patch;
+          newlyAddedSinceSave++;
+        }
+      }
+    }
+
+    const doneTotal = alreadyCachedCount + completedNew;
+    onProgress?.({
+      percent: Math.min(99, Math.round((doneTotal / Math.max(1, allEntries.length)) * 100)),
+      cachedCount: doneTotal,
+      totalCount: allEntries.length,
+      uncachedCount: totalUniqueToFetch - completedNew,
+    });
+
+    // Save checkpoint to IndexedDB every 96 newly computed skins so progress is never lost
+    if (newlyAddedSinceSave >= 96) {
+      newlyAddedSinceSave = 0;
+      await saveScannerPatchCacheToIndexedDB(memoryPatchCache);
+    }
+  }
+
+  // Final save to IndexedDB
+  if (newlyAddedSinceSave > 0) {
+    await saveScannerPatchCacheToIndexedDB(memoryPatchCache);
+  }
+
+  onProgress?.({
+    percent: 100,
+    cachedCount: allEntries.length,
+    totalCount: allEntries.length,
+    uncachedCount: 0,
+  });
+
+  const indexed = [];
+  for (const entry of allEntries) {
+    const cachedPatch = memoryPatchCache[entry.image];
+    if (cachedPatch && cachedPatch.data) {
+      indexed.push({
+        ...entry,
+        patch: {
+          data:
+            cachedPatch.data instanceof Uint8Array
+              ? cachedPatch.data
+              : new Uint8Array(cachedPatch.data),
+          visibleRows: cachedPatch.visibleRows,
+        },
+      });
     }
   }
 
   return indexed;
+}
+
+/**
+ * Quietly warms up the catalog skin index in the background once the catalog is loaded.
+ */
+export function warmUpCatalogSkinIndexInBackground(heroes) {
+  if (ongoingWarmupPromise) return ongoingWarmupPromise;
+  ongoingWarmupPromise = buildCatalogSkinIndex(heroes)
+    .catch(() => [])
+    .finally(() => {
+      ongoingWarmupPromise = null;
+    });
+  return ongoingWarmupPromise;
 }
 
 /**

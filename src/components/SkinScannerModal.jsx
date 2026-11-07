@@ -27,7 +27,12 @@ export default function SkinScannerModal({
 
   const [catalogIndex, setCatalogIndex] = useState([]);
   const [isIndexing, setIsIndexing] = useState(false);
-  const [indexProgress, setIndexProgress] = useState(0);
+  const [indexStats, setIndexStats] = useState({
+    percent: 0,
+    cachedCount: 0,
+    totalCount: 0,
+    uncachedCount: 0,
+  });
 
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [scanResults, setScanResults] = useState([]);
@@ -79,21 +84,30 @@ export default function SkinScannerModal({
       .slice(0, 60);
   }, [allCatalogSkins, manualSearchQuery]);
 
-  // Build catalog index whenever modal opens or heroes change
+  // Build catalog index whenever modal opens or heroes change (loads instantly from IndexedDB after first build)
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
 
     const prepareIndex = async () => {
       setIsIndexing(true);
-      setIndexProgress(0);
       try {
-        const indexed = await buildCatalogSkinIndex(heroes, (pct) => {
-          if (!cancelled) setIndexProgress(pct);
+        const indexed = await buildCatalogSkinIndex(heroes, (stats) => {
+          if (!cancelled && stats) {
+            setIndexStats(
+              typeof stats === 'number'
+                ? {
+                    percent: stats,
+                    cachedCount: 0,
+                    totalCount: totalCatalogSkins,
+                    uncachedCount: 0,
+                  }
+                : stats
+            );
+          }
         });
         if (!cancelled) {
           setCatalogIndex(indexed);
-          setIndexProgress(100);
         }
       } catch {
         if (!cancelled) setCatalogIndex([]);
@@ -106,7 +120,7 @@ export default function SkinScannerModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, heroes]);
+  }, [isOpen, heroes, totalCatalogSkins]);
 
   // Run scan whenever uploadedFiles or gridMode changes (and catalogIndex is ready)
   useEffect(() => {
@@ -321,8 +335,23 @@ export default function SkinScannerModal({
           </div>
 
           <div className="modalHeaderActions">
-            <span className="scannerCatalogCountBadge tabular">
-              สกินในคลังเว็บ: <b>{totalCatalogSkins}</b> ใบ
+            <span
+              className="scannerCatalogCountBadge tabular"
+              title="ระบบบันทึกแคชดัชนีสกินไว้ในเครื่องถาวร (IndexedDB) จึงโหลดเฉพาะครั้งแรกครั้งเดียว ครั้งต่อไปเปิดได้ทันทีไม่ต้องดึงจาก Cloud ซ้ำ"
+            >
+              {isIndexing ? (
+                <>
+                  ⏳ กำลังจำดัชนีครั้งแรก:{' '}
+                  <b>
+                    {indexStats.cachedCount}/{indexStats.totalCount || totalCatalogSkins}
+                  </b>{' '}
+                  ({indexStats.percent}%)
+                </>
+              ) : (
+                <>
+                  ⚡ แคชดัชนีพร้อม: <b>{catalogIndex.length || totalCatalogSkins}</b> ใบ (ไม่ต้องโหลดซ้ำ)
+                </>
+              )}
             </span>
             <button
               type="button"
@@ -423,13 +452,19 @@ export default function SkinScannerModal({
 
           {isIndexing && (
             <div className="scannerLoadingState">
-              <RefreshCw size={24} className="spinIcon" />
-              <b>กำลังเตรียมดัชนีภาพสกินในคลัง ({indexProgress}%)...</b>
-              <p>ระบบกำลังตัดป้ายมุมขวาบนและคำนวณจุดเด่นของสกินทั้งหมดในเว็บ</p>
+              <RefreshCw size={22} className="spinIcon" />
+              <b>
+                กำลังสร้างแคชดัชนีสกินครั้งแรก ({indexStats.cachedCount}/
+                {indexStats.totalCount || totalCatalogSkins} ใบ ·{' '}
+                {indexStats.percent}%)...
+              </b>
+              <p>
+                ทำเฉพาะครั้งแรกครั้งเดียว (โหลดพร้อมกันทีละ 24 รูป) และบันทึกเก็บไว้ในเครื่องถาวร — ครั้งต่อไปหรือรีเฟรชเว็บจะเปิดได้ทันทีใน 0.05 วินาทีโดยไม่ต้องดึงรูปจาก Cloud ซ้ำ
+              </p>
             </div>
           )}
 
-          {!isIndexing && uploadedFiles.length === 0 && (
+          {uploadedFiles.length === 0 && (
             <div
               className="scannerDropzoneBox"
               onClick={() => fileInputRef.current?.click()}
