@@ -27,6 +27,7 @@ import {
 import { uploadImageFile } from './utils/cloudStorage';
 import HeroSkinModal from './components/HeroSkinModal';
 import PosterCanvas from './components/PosterCanvas';
+import FloatingScratchpad from './components/FloatingScratchpad';
 import { loadCatalogFromIndexedDB, saveCatalogToIndexedDB } from './utils/catalogStorage';
 
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
@@ -1182,6 +1183,85 @@ export function App() {
     });
     return list;
   }, [heroes, activeHero, showAllHeroesSkins, skinQuery]);
+
+  // Capture a quick snapshot of the current board to store in the Floating Scratchpad
+  const handleCaptureBoardToScratchpad = async () => {
+    if (!selectedSkins.length) {
+      throw new Error('ยังไม่มีรูปสกินในตาราง');
+    }
+    const cols = Math.max(1, Math.min(20, Number(layout?.columns) || 6));
+    const actualCols = Math.min(cols, selectedSkins.length);
+    const rows = Math.ceil(selectedSkins.length / cols);
+
+    // Use a balanced tile resolution so multiple snapshots fit comfortably in localStorage
+    let tileWidth = 220;
+    let tileHeight = 360;
+    const maxDim = 2400;
+    if (actualCols * tileWidth > maxDim || rows * tileHeight > maxDim) {
+      const scale = Math.min(
+        maxDim / (actualCols * tileWidth),
+        maxDim / (rows * tileHeight)
+      );
+      tileWidth = Math.max(88, Math.floor(tileWidth * scale));
+      tileHeight = Math.max(144, Math.round((tileWidth * 540) / 330));
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, actualCols * tileWidth);
+    canvas.height = Math.max(1, rows * tileHeight);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('ไม่สามารถเตรียมพื้นที่สร้างภาพได้');
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    for (let i = 0; i < selectedSkins.length; i++) {
+      const item = selectedSkins[i];
+      const heroObj = heroesById[item.heroId];
+      const imgSrc = item.image || heroObj?.image || '';
+      const colIdx = i % cols;
+      const rowIdx = Math.floor(i / cols);
+      const left = colIdx * tileWidth;
+      const top = rowIdx * tileHeight;
+
+      ctx.fillStyle =
+        heroObj?.color || PASTEL_PALETTE[i % PASTEL_PALETTE.length] || '#ffffff';
+      ctx.fillRect(left, top, tileWidth, tileHeight);
+
+      if (!imgSrc) continue;
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+        img.src = imgSrc;
+      });
+      if (!img.naturalWidth || !img.naturalHeight) continue;
+
+      const sourceRatio = img.naturalWidth / img.naturalHeight;
+      const targetRatio = tileWidth / tileHeight;
+      let sx = 0;
+      let sy = 0;
+      let sw = img.naturalWidth;
+      let sh = img.naturalHeight;
+
+      if (sourceRatio > targetRatio) {
+        sw = img.naturalHeight * targetRatio;
+        sx = (img.naturalWidth - sw) / 2;
+      } else {
+        sh = img.naturalWidth / targetRatio;
+        sy = (img.naturalHeight - sh) / 2;
+      }
+
+      ctx.drawImage(img, sx, sy, sw, sh, left, top, tileWidth, tileHeight);
+    }
+
+    return {
+      dataUrl: canvas.toDataURL('image/jpeg', 0.88),
+      count: selectedSkins.length,
+      title: `ตาราง ${selectedSkins.length} สกิน (${cols} รูป/แถว)`,
+    };
+  };
 
   // Render the collage directly to a pixel-aligned canvas.
   const handleDownloadPng = async () => {
@@ -2979,6 +3059,13 @@ export function App() {
           </div>
         )}
       </section>
+
+      {/* Movable Floating Image Scratchpad UI */}
+      <FloatingScratchpad
+        onCaptureCurrentBoard={handleCaptureBoardToScratchpad}
+        hasBoardSkins={selectedSkins.length > 0}
+        notify={notify}
+      />
 
       {/* Full Hero & Skin Database Manager Modal */}
       <HeroSkinModal
