@@ -5043,9 +5043,85 @@ footer span {
   }
 }
 
+/* Scanner Real-Time Percentage Progress Bar & Post-Import Fresh Screen Banner */
+.scannerPercentHeadline {
+  font-size: 16px;
+  font-weight: 700;
+  color: #4b2f4e;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+}
 
+.scannerPercentHeadline span {
+  font-size: 24px;
+  font-weight: 800;
+  color: #b55497;
+}
 
+.scannerProgressBarTrack {
+  width: min(440px, 90%);
+  height: 12px;
+  background: #f0dfee;
+  border: 1px solid #dfb9d8;
+  border-radius: 99px;
+  overflow: hidden;
+  padding: 1px;
+}
 
+.scannerProgressBarFill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #d781bc 0%, #b164be 55%, #8d5fc9 100%);
+  transition: width 0.16s ease-out;
+}
 
+.scannerImportedSuccessBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: linear-gradient(120deg, #eefbf3, #f5effd);
+  border: 1.5px solid #9ad6b3;
+  border-radius: 16px;
+  padding: 14px 18px;
+  box-shadow: 0 8px 22px rgba(46, 125, 82, 0.08);
+}
 
+.scannerSuccessLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
+.scannerSuccessIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #278a53;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.scannerSuccessLeft b {
+  display: block;
+  font-size: 14px;
+  color: #1f5c3a;
+}
+
+.scannerSuccessLeft small {
+  display: block;
+  font-size: 12px;
+  color: #547963;
+  margin-top: 2px;
+}
+
+.scannerViewBoardBtn {
+  white-space: nowrap;
+}

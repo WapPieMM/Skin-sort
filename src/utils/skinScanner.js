@@ -677,6 +677,7 @@ export async function scanScreenshotForSkins({
   catalogIndex,
   gridMode = 'auto',
   matchThreshold = 66,
+  onSlotProgress,
 }) {
   const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -716,8 +717,11 @@ export async function scanScreenshotForSkins({
   ];
 
   const isShopLayout = boxes[0]?.layoutType === 'shop';
+  const slots = [];
 
-  const slots = boxes.map((box) => {
+  for (let i = 0; i < boxes.length; i++) {
+    const box = boxes[i];
+
     // Create thumbnail of the detected card slot (excluding bottom "มีแล้ว" or mastery bar)
     thumbCtx.fillStyle = '#191838';
     thumbCtx.fillRect(0, 0, thumbW, thumbH);
@@ -772,7 +776,7 @@ export async function scanScreenshotForSkins({
     const topMatch = topCandidates[0] || null;
     const isMatched = Boolean(topMatch && topMatch.score >= matchThreshold);
 
-    return {
+    slots.push({
       slotId: `slot_${box.index}_${Date.now()}_${Math.random()
         .toString(36)
         .slice(2, 6)}`,
@@ -785,8 +789,18 @@ export async function scanScreenshotForSkins({
       included: isMatched,
       selectedMatch: isMatched ? topMatch : null,
       candidates: topCandidates,
-    };
-  });
+    });
+
+    onSlotProgress?.({
+      slotIndex: i + 1,
+      totalSlots: boxes.length,
+    });
+
+    // Yield briefly every 2 slots so the browser repaints the live progress bar & percentage
+    if (i % 2 === 1 || i === boxes.length - 1) {
+      await new Promise((r) => setTimeout(r, 0));
+    }
+  }
 
   const detectedRows = boxes.length > 10 ? 3 : 2;
   return {
@@ -801,3 +815,4 @@ export async function scanScreenshotForSkins({
     slots,
   };
 }
+

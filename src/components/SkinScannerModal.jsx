@@ -37,6 +37,15 @@ export default function SkinScannerModal({
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [scanResults, setScanResults] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState({
+    percent: 0,
+    currentFile: 1,
+    totalFiles: 1,
+    slotIndex: 0,
+    totalSlots: 15,
+    fileName: '',
+  });
+  const [lastImportedCount, setLastImportedCount] = useState(0);
 
   // Active slot ID for manual skin picker popover
   const [manualPickerSlotId, setManualPickerSlotId] = useState(null);
@@ -86,7 +95,10 @@ export default function SkinScannerModal({
 
   // Build catalog index whenever modal opens or heroes change (loads instantly from IndexedDB after first build)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setLastImportedCount(0);
+      return;
+    }
     let cancelled = false;
 
     const prepareIndex = async () => {
@@ -129,14 +141,45 @@ export default function SkinScannerModal({
 
     const runBatchScan = async () => {
       setIsScanning(true);
+      setScanProgress({
+        percent: 2,
+        currentFile: 1,
+        totalFiles: uploadedFiles.length,
+        slotIndex: 0,
+        totalSlots: gridMode === '5x2' || gridMode === 'shop' ? 10 : 15,
+        fileName: uploadedFiles[0]?.name || '',
+      });
       try {
         const results = [];
         for (let i = 0; i < uploadedFiles.length; i++) {
+          const currentFileObj = uploadedFiles[i];
           const res = await scanScreenshotForSkins({
-            file: uploadedFiles[i],
+            file: currentFileObj,
             catalogIndex,
             gridMode,
             matchThreshold,
+            onSlotProgress: ({ slotIndex, totalSlots }) => {
+              if (cancelled) return;
+              const fileFraction = slotIndex / Math.max(1, totalSlots);
+              const overallPct = Math.min(
+                99,
+                Math.max(
+                  3,
+                  Math.round(
+                    ((i + fileFraction) / Math.max(1, uploadedFiles.length)) *
+                      100
+                  )
+                )
+              );
+              setScanProgress({
+                percent: overallPct,
+                currentFile: i + 1,
+                totalFiles: uploadedFiles.length,
+                slotIndex,
+                totalSlots,
+                fileName: currentFileObj.name,
+              });
+            },
           });
           results.push({
             ...res,
@@ -144,6 +187,7 @@ export default function SkinScannerModal({
           });
         }
         if (!cancelled) {
+          setScanProgress((prev) => ({ ...prev, percent: 100 }));
           setScanResults(results);
         }
       } catch (err) {
@@ -196,6 +240,7 @@ export default function SkinScannerModal({
       }
       if (files.length > 0) {
         e.preventDefault();
+        setLastImportedCount(0);
         setUploadedFiles((prev) => [...prev, ...files]);
         notify?.(`วางภาพแคปหน้าจอ ${files.length} รูปเพื่อสแกนแล้ว`);
       }
@@ -237,6 +282,7 @@ export default function SkinScannerModal({
       f.type.startsWith('image/')
     );
     if (!valid.length) return;
+    setLastImportedCount(0);
     setUploadedFiles((prev) => [...prev, ...valid]);
   };
 
@@ -304,6 +350,11 @@ export default function SkinScannerModal({
     setUploadedFiles([]);
     setScanResults([]);
     setManualPickerSlotId(null);
+    setManualSearchQuery('');
+    setLastImportedCount(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleConfirmImport = () => {
@@ -311,8 +362,20 @@ export default function SkinScannerModal({
       notify?.('ยังไม่มีสกินที่เลือกนำเข้า กรุณาติ๊กเลือกอย่างน้อย 1 ใบ');
       return;
     }
+    const importedCount = summaryStats.matchedItems.length;
     onImportMatchedSkins(summaryStats.matchedItems, appendMode === 'replace');
-    onClose();
+
+    // Reset all old scan results & uploaded files so the modal immediately shows a fresh upload screen
+    setUploadedFiles([]);
+    setScanResults([]);
+    setManualPickerSlotId(null);
+    setManualSearchQuery('');
+    setLastImportedCount(importedCount);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    // After importing first batch, switch default mode to 'append' so subsequent uploads add to the board
+    setAppendMode('append');
   };
 
   return (
@@ -454,14 +517,46 @@ export default function SkinScannerModal({
           {isIndexing && (
             <div className="scannerLoadingState">
               <RefreshCw size={22} className="spinIcon" />
-              <b>
-                กำลังสร้างแคชดัชนีสกินครั้งแรก ({indexStats.cachedCount}/
-                {indexStats.totalCount || totalCatalogSkins} ใบ ·{' '}
-                {indexStats.percent}%)...
+              <b className="tabular">
+                กำลังสร้างแคชดัชนีสกินครั้งแรก: {indexStats.percent}% (
+                {indexStats.cachedCount}/
+                {indexStats.totalCount || totalCatalogSkins} ใบ)
               </b>
+              <div className="scannerProgressBarTrack">
+                <div
+                  className="scannerProgressBarFill"
+                  style={{ width: `${Math.max(4, indexStats.percent || 0)}%` }}
+                />
+              </div>
               <p>
-                ทำเฉพาะครั้งแรกครั้งเดียว (โหลดพร้อมกันทีละ 24 รูป) และบันทึกเก็บไว้ในเครื่องถาวร — ครั้งต่อไปหรือรีเฟรชเว็บจะเปิดได้ทันทีใน 0.05 วินาทีโดยไม่ต้องดึงรูปจาก Cloud ซ้ำ
+                ทำเฉพาะครั้งแรกครั้งเดียว (โหลดพร้อมกันทีละ 24 รูป) และบันทึกเก็บไว้ในเครื่องถาวร — ครั้งต่อไปเปิดได้ทันทีใน 0.05 วินาที
               </p>
+            </div>
+          )}
+
+          {lastImportedCount > 0 && uploadedFiles.length === 0 && !isScanning && (
+            <div className="scannerImportedSuccessBanner">
+              <div className="scannerSuccessLeft">
+                <span className="scannerSuccessIcon">✓</span>
+                <div>
+                  <b>
+                    นำเข้าสกินเข้าตารางพรีวิวเรียบร้อยแล้ว {lastImportedCount} รูป!
+                  </b>
+                  <small>
+                    หน้าจอถูกรีเซ็ตใหม่แล้ว สามารถอัปโหลดภาพแคปหน้าจอใบถัดไปเพื่อสแกนต่อได้ทันที
+                  </small>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="primary scannerViewBoardBtn"
+                onClick={() => {
+                  setLastImportedCount(0);
+                  onClose();
+                }}
+              >
+                เสร็จสิ้น · ไปดูตารางพรีวิว
+              </button>
             </div>
           )}
 
@@ -501,9 +596,22 @@ export default function SkinScannerModal({
 
           {isScanning && (
             <div className="scannerLoadingState">
-              <RefreshCw size={24} className="spinIcon" />
-              <b>กำลังตัดแบ่งการ์ด 15 ใบ และแมตช์กับคลังสกินในเว็บ...</b>
-              <p>กำลังประมวลผลด้วยอัลกอริทึม Core Artwork & Outlier Trimming</p>
+              <RefreshCw size={26} className="spinIcon" />
+              <div className="scannerPercentHeadline tabular">
+                กำลังสแกนและแมตช์รูปสกิน... <span>{scanProgress.percent}%</span>
+              </div>
+              <div className="scannerProgressBarTrack">
+                <div
+                  className="scannerProgressBarFill"
+                  style={{ width: `${Math.max(5, scanProgress.percent)}%` }}
+                />
+              </div>
+              <p className="tabular">
+                ภาพที่ {scanProgress.currentFile}/{scanProgress.totalFiles}
+                {scanProgress.fileName ? ` (${scanProgress.fileName})` : ''} ·
+                กำลังเทียบการ์ดใบที่ <b>{scanProgress.slotIndex}</b>/
+                <b>{scanProgress.totalSlots}</b> กับคลังสกินในเว็บ
+              </p>
             </div>
           )}
 
