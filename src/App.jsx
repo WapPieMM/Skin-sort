@@ -1904,259 +1904,270 @@ export function App() {
 
                 {!isMobilePickerCollapsed && (
                   <div className="sortskinSidebarBody">
-                    {!pickerHero ? (
-                      /* VIEW 1: HERO CATEGORY LIST (Skins tucked inside each Hero) */
-                      <>
-                        <div className="sortskinSearchBox">
-                          <Search size={15} />
-                          <input
-                            placeholder="ค้นหาฮีโร่..."
-                            value={heroQuery}
-                            onChange={(e) => setHeroQuery(e.target.value)}
-                          />
-                          {heroQuery && (
-                            <button
-                              type="button"
-                              className="clearSearchInlineBtn"
-                              onClick={() => setHeroQuery('')}
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
+                    {/* HERO CATEGORY LIST (Always visible on the left) */}
+                    <div className="sortskinSearchBox">
+                      <Search size={15} />
+                      <input
+                        placeholder="ค้นหาฮีโร่..."
+                        value={heroQuery}
+                        onChange={(e) => setHeroQuery(e.target.value)}
+                      />
+                      {heroQuery && (
+                        <button
+                          type="button"
+                          className="clearSearchInlineBtn"
+                          onClick={() => setHeroQuery('')}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
 
-                        <div className="sortskinHeroList">
-                          {filteredHeroes.map((h, i) => {
-                            const selectedCountForHero = selectedSkins.filter(
-                              (item) => item.heroId === h.id
-                            ).length;
-                            const totalSkinsForHero = h.skins?.length || 0;
-                            const previewImg =
-                              h.image || h.skins?.[0]?.image || '';
+                    <div className="sortskinHeroList">
+                      {filteredHeroes.map((h, i) => {
+                        const selectedCountForHero = selectedSkins.filter(
+                          (item) => item.heroId === h.id
+                        ).length;
+                        const totalSkinsForHero = h.skins?.length || 0;
+                        const previewImg =
+                          h.image || h.skins?.[0]?.image || '';
+                        const isCurrentOpen = pickerHero?.id === h.id;
 
-                            return (
-                              <button
-                                type="button"
-                                key={h.id}
-                                className={
-                                  'sortskinHeroRow ' +
-                                  (selectedCountForHero > 0 ? 'hasPicked' : '')
-                                }
-                                onClick={() => {
-                                  setPickerHeroId(h.id);
-                                  setActiveHeroId(h.id);
-                                  setSkinQuery('');
-                                }}
-                              >
-                                <div
-                                  className="sortskinHeroAvatar"
-                                  style={{
-                                    background:
-                                      h.color ||
-                                      PASTEL_PALETTE[i % PASTEL_PALETTE.length],
-                                  }}
-                                >
-                                  {previewImg ? (
-                                    <img
-                                      src={previewImg}
-                                      alt={h.name}
-                                      referrerPolicy="no-referrer"
-                                    />
-                                  ) : (
-                                    <span>{h.name.slice(0, 1)}</span>
-                                  )}
-                                  {selectedCountForHero > 0 && (
-                                    <i className="heroActiveDot" />
-                                  )}
-                                </div>
-
-                                <div className="sortskinHeroMeta">
-                                  <b>{h.name}</b>
-                                  <small className="tabular">
-                                    {selectedCountForHero > 0 ? (
-                                      <>
-                                        <strong>{selectedCountForHero}</strong>/
-                                        {totalSkinsForHero} สกิน
-                                      </>
-                                    ) : (
-                                      <>{totalSkinsForHero} สกิน</>
-                                    )}
-                                  </small>
-                                </div>
-
-                                <span className="sortskinChevron">›</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </>
-                    ) : (
-                      /* VIEW 2: NESTED SKINS INSIDE SELECTED HERO CATEGORY */
-                      <>
-                        <div className="sortskinDrawerBackBar">
+                        return (
                           <button
                             type="button"
-                            className="backToHeroesBtn"
+                            key={h.id}
+                            className={
+                              'sortskinHeroRow ' +
+                              (isCurrentOpen ? 'activeHeroRow ' : '') +
+                              (selectedCountForHero > 0 ? 'hasPicked' : '')
+                            }
                             onClick={() => {
-                              setPickerHeroId(null);
+                              setPickerHeroId((prev) =>
+                                prev === h.id ? null : h.id
+                              );
+                              setActiveHeroId(h.id);
                               setSkinQuery('');
                             }}
                           >
-                            ‹ หมวดฮีโร่
-                          </button>
+                            <div
+                              className="sortskinHeroAvatar"
+                              style={{
+                                background:
+                                  h.color ||
+                                  PASTEL_PALETTE[i % PASTEL_PALETTE.length],
+                              }}
+                            >
+                              {previewImg ? (
+                                <img
+                                  src={previewImg}
+                                  alt={h.name}
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <span>{h.name.slice(0, 1)}</span>
+                              )}
+                              {selectedCountForHero > 0 && (
+                                <i className="heroActiveDot" />
+                              )}
+                            </div>
 
-                          <div className="drawerHeroTitle">
+                            <div className="sortskinHeroMeta">
+                              <b>{h.name}</b>
+                              <small className="tabular">
+                                {selectedCountForHero > 0 ? (
+                                  <>
+                                    <strong>{selectedCountForHero}</strong>/
+                                    {totalSkinsForHero} สกิน
+                                  </>
+                                ) : (
+                                  <>{totalSkinsForHero} สกิน</>
+                                )}
+                              </small>
+                            </div>
+
+                            <span className="sortskinChevron">›</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* FLOATING SKIN POPOVER PANEL EMERGING FROM HERO CATEGORY (Matches IMG_0443) */}
+                    {pickerHero && (
+                      <div
+                        className="heroSkinsFloatingPopover"
+                        role="dialog"
+                        aria-label={`เลือกสกินของ ${pickerHero.name}`}
+                      >
+                        <div className="floatingPopoverHeader">
+                          <div className="floatingPopoverTitle">
+                            <span>ฮีโร่</span>
                             <b>{pickerHero.name}</b>
-                            <small className="tabular">
-                              เลือกแล้ว{' '}
+                          </div>
+
+                          <div className="floatingPopoverRight">
+                            {pickerHero.skins?.length > 0 && (
+                              <button
+                                type="button"
+                                className="floatingSelectAllBtn"
+                                onClick={() => {
+                                  pickerHero.skins.forEach((sk) =>
+                                    addSkinSelection(pickerHero, sk)
+                                  );
+                                  notify(
+                                    `เพิ่มสกินทั้งหมดของ ${pickerHero.name} เข้าตารางแล้ว`
+                                  );
+                                }}
+                              >
+                                + เลือกทั้งหมด
+                              </button>
+                            )}
+
+                            <span className="floatingPopoverCount tabular">
                               {
                                 selectedSkins.filter(
                                   (s) => s.heroId === pickerHero.id
                                 ).length
                               }
-                              /{pickerHero.skins?.length || 0} สกิน
-                            </small>
-                          </div>
+                              /{pickerHero.skins?.length || 0}
+                            </span>
 
-                          {pickerHero.skins?.length > 0 && (
                             <button
                               type="button"
-                              className="selectAllHeroSkinsBtn"
+                              className="floatingPopoverCloseBtn"
                               onClick={() => {
-                                pickerHero.skins.forEach((sk) =>
-                                  addSkinSelection(pickerHero, sk)
-                                );
-                                notify(
-                                  `เพิ่มสกินทั้งหมดของ ${pickerHero.name} เข้าตารางแล้ว`
-                                );
+                                setPickerHeroId(null);
+                                setSkinQuery('');
                               }}
+                              title="ปิดหน้าต่างเลือกสกิน"
                             >
-                              + เลือกทั้งหมด
+                              ×
                             </button>
-                          )}
+                          </div>
                         </div>
 
-                        {pickerHero.skins?.length > 4 && (
-                          <div className="sortskinSearchBox compactSearch">
-                            <Search size={14} />
-                            <input
-                              placeholder={`ค้นหาสกินของ ${pickerHero.name}...`}
-                              value={skinQuery}
-                              onChange={(e) => setSkinQuery(e.target.value)}
-                            />
+                        {pickerHero.skins?.length > 8 && (
+                          <div className="floatingPopoverSearchRow">
+                            <div className="sortskinSearchBox compactSearch">
+                              <Search size={14} />
+                              <input
+                                placeholder={`ค้นหาสกินของ ${pickerHero.name}...`}
+                                value={skinQuery}
+                                onChange={(e) => setSkinQuery(e.target.value)}
+                              />
+                              {skinQuery && (
+                                <button
+                                  type="button"
+                                  className="clearSearchInlineBtn"
+                                  onClick={() => setSkinQuery('')}
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
                           </div>
                         )}
 
-                        {!pickerHero.skins || pickerHero.skins.length === 0 ? (
-                          <div className="nestedEmptySkinBox">
-                            <p>ยังไม่มีรูปสกินของ {pickerHero.name}</p>
-                            <button
-                              type="button"
-                              className="primary"
-                              onClick={() => {
-                                setActiveHeroId(pickerHero.id);
-                                setIsManagerOpen(true);
-                              }}
-                            >
-                              <Upload size={14} /> อัปโหลดรูปสกิน{' '}
-                              {pickerHero.name}
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="sortskinNestedSkinGrid">
-                            {pickerHero.skins
-                              .filter((s) =>
-                                s.name
-                                  .toLowerCase()
-                                  .includes(skinQuery.toLowerCase())
-                              )
-                              .map((s, idx) => {
-                                const selectedCount = getSkinSelectedCount(
-                                  pickerHero.id,
-                                  s.id
-                                );
-                                const chosen = selectedCount > 0;
-                                const displayImg =
-                                  s.image || pickerHero.image || '';
+                        <div className="floatingPopoverBody">
+                          {!pickerHero.skins || pickerHero.skins.length === 0 ? (
+                            <div className="nestedEmptySkinBox">
+                              <p>ยังไม่มีรูปสกินของ {pickerHero.name}</p>
+                              <button
+                                type="button"
+                                className="primary"
+                                onClick={() => {
+                                  setActiveHeroId(pickerHero.id);
+                                  setIsManagerOpen(true);
+                                }}
+                              >
+                                <Upload size={14} /> อัปโหลดรูปสกิน{' '}
+                                {pickerHero.name}
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="floatingPopoverSkinGrid">
+                              {pickerHero.skins
+                                .filter((s) =>
+                                  s.name
+                                    .toLowerCase()
+                                    .includes(skinQuery.toLowerCase())
+                                )
+                                .map((s, idx) => {
+                                  const selectedCount = getSkinSelectedCount(
+                                    pickerHero.id,
+                                    s.id
+                                  );
+                                  const chosen = selectedCount > 0;
+                                  const displayImg =
+                                    s.image || pickerHero.image || '';
 
-                                return (
-                                  <div
-                                    key={s.id}
-                                    className={
-                                      'nestedSkinCard ' +
-                                      (chosen ? 'chosen' : '')
-                                    }
-                                    onClick={() =>
-                                      addSkinSelection(pickerHero, s)
-                                    }
-                                    title="แตะเพื่อเพิ่มสกินเข้าตาราง (แตะซ้ำเพื่อเพิ่มรูปเดิมซ้ำได้)"
-                                  >
+                                  return (
                                     <div
-                                      className="nestedSkinArt"
-                                      style={{
-                                        background:
-                                          pickerHero.color ||
-                                          PASTEL_PALETTE[
-                                            idx % PASTEL_PALETTE.length
-                                          ],
-                                      }}
+                                      key={s.id}
+                                      className={
+                                        'floatingPopoverSkinCard ' +
+                                        (chosen ? 'chosen' : '')
+                                      }
+                                      onClick={() =>
+                                        addSkinSelection(pickerHero, s)
+                                      }
+                                      title="แตะเพื่อเพิ่มสกินเข้าตาราง (แตะซ้ำเพื่อเพิ่มรูปเดิมซ้ำได้)"
                                     >
-                                      {displayImg ? (
-                                        <img
-                                          src={displayImg}
-                                          alt={s.name}
-                                          referrerPolicy="no-referrer"
-                                        />
-                                      ) : (
-                                        <span>{s.name.slice(0, 2)}</span>
-                                      )}
-
-                                      {chosen && (
-                                        <b className="skinCountBadge tabular">
-                                          ×{selectedCount}
-                                        </b>
-                                      )}
-
                                       <div
-                                        className="skinTileQtyBar"
-                                        onClick={(e) => e.stopPropagation()}
+                                        className="floatingPopoverSkinArt"
+                                        style={{
+                                          background:
+                                            pickerHero.color ||
+                                            PASTEL_PALETTE[
+                                              idx % PASTEL_PALETTE.length
+                                            ],
+                                        }}
                                       >
+                                        {displayImg ? (
+                                          <img
+                                            src={displayImg}
+                                            alt={s.name}
+                                            referrerPolicy="no-referrer"
+                                            draggable={false}
+                                          />
+                                        ) : (
+                                          <span>{s.name.slice(0, 2)}</span>
+                                        )}
+
+                                        {chosen && (
+                                          <b className="skinCountBadge tabular">
+                                            ×{selectedCount}
+                                          </b>
+                                        )}
+
                                         {chosen && (
                                           <button
                                             type="button"
-                                            className="qtyMinusBtn"
-                                            onClick={() =>
+                                            className="floatingSkinMinusBtn"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
                                               removeOneSkinInstance(
                                                 pickerHero.id,
                                                 s.id
-                                              )
-                                            }
-                                            title="ลดจำนวนลง 1 รูป"
+                                              );
+                                            }}
+                                            title="ลดจำนวนสกินนี้ลง 1 รูป"
                                           >
                                             −
                                           </button>
                                         )}
-                                        <button
-                                          type="button"
-                                          className="qtyPlusBtn"
-                                          onClick={() =>
-                                            addSkinSelection(pickerHero, s)
-                                          }
-                                          title="เพิ่มสกินนี้อีก 1 รูป"
-                                        >
-                                          +{chosen ? 'ซ้ำ' : 'เลือก'}
-                                        </button>
+
+                                        <div className="floatingSkinBottomCaption">
+                                          <b>{s.name}</b>
+                                        </div>
                                       </div>
                                     </div>
-                                    <div className="nestedSkinName">
-                                      <b>{s.name}</b>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        )}
-                      </>
+                                  );
+                                })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
