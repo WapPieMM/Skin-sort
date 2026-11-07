@@ -190,6 +190,32 @@ export default function SkinScannerModal({
     return () => window.removeEventListener('paste', handlePaste);
   }, [isOpen, notify]);
 
+  // Summary counts across all scanned screenshots
+  const summaryStats = useMemo(() => {
+    let totalSlots = 0;
+    let matchedCount = 0;
+    let skippedCount = 0;
+    const matchedItems = [];
+
+    for (const page of scanResults) {
+      for (const slot of page.slots) {
+        totalSlots++;
+        if (slot.included && slot.selectedMatch) {
+          matchedCount++;
+          matchedItems.push(slot.selectedMatch);
+        } else {
+          skippedCount++;
+        }
+      }
+    }
+    return {
+      totalSlots,
+      matchedCount,
+      skippedCount,
+      matchedItems,
+    };
+  }, [scanResults]);
+
   if (!isOpen) return null;
 
   const handleFilesSelected = (fileList) => {
@@ -265,32 +291,6 @@ export default function SkinScannerModal({
     setScanResults([]);
     setManualPickerSlotId(null);
   };
-
-  // Summary counts across all scanned screenshots
-  const summaryStats = useMemo(() => {
-    let totalSlots = 0;
-    let matchedCount = 0;
-    let skippedCount = 0;
-    const matchedItems = [];
-
-    for (const page of scanResults) {
-      for (const slot of page.slots) {
-        totalSlots++;
-        if (slot.included && slot.selectedMatch) {
-          matchedCount++;
-          matchedItems.push(slot.selectedMatch);
-        } else {
-          skippedCount++;
-        }
-      }
-    }
-    return {
-      totalSlots,
-      matchedCount,
-      skippedCount,
-      matchedItems,
-    };
-  }, [scanResults]);
 
   const handleConfirmImport = () => {
     if (!summaryStats.matchedItems.length) {
