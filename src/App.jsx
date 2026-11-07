@@ -28,6 +28,7 @@ import { uploadImageFile } from './utils/cloudStorage';
 import HeroSkinModal from './components/HeroSkinModal';
 import PosterCanvas from './components/PosterCanvas';
 import FloatingScratchpad from './components/FloatingScratchpad';
+import SkinScannerModal from './components/SkinScannerModal';
 import { loadCatalogFromIndexedDB, saveCatalogToIndexedDB } from './utils/catalogStorage';
 
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
@@ -425,6 +426,7 @@ export function App() {
   );
 
   const [isManagerOpen, setIsManagerOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // 3. Selected Skin Queue + Undo / Redo History Stack
   const [selectedSkins, setSelectedSkins] = useState(() => {
@@ -840,6 +842,30 @@ export function App() {
         image: skinObj.image || '',
       },
     ]);
+  };
+
+  // Batch import matched skins from the 5x3 / 5x2 Screenshot Skin Scanner
+  const handleImportScannedSkins = (matchedItems, replaceExisting = false) => {
+    if (!Array.isArray(matchedItems) || matchedItems.length === 0) return;
+    const now = Date.now();
+    const newEntries = matchedItems.map((m, idx) => ({
+      uid: `${m.heroId}__${m.skinId}__scan_${now}_${idx}_${Math.random()
+        .toString(36)
+        .slice(2, 6)}`,
+      heroId: m.heroId,
+      heroName: m.heroName,
+      skinId: m.skinId,
+      name: m.skinName,
+      image: m.image || '',
+    }));
+
+    commitSelectedSkins((prev) =>
+      replaceExisting ? newEntries : [...prev, ...newEntries]
+    );
+    setSelectedArrangeIdx(null);
+    notify(
+      `นำเข้าสกินจากการสแกนรูปภาพสำเร็จ ${newEntries.length} รูป (กด ↶ ย้อนกลับได้)`
+    );
   };
 
   // Remove the most recently added instance of a specific (heroId, skinId)
@@ -2191,6 +2217,15 @@ export function App() {
                   <div className="boardActionsGroup">
                     <button
                       type="button"
+                      className="boardToolBtn scannerTriggerBtn"
+                      onClick={() => setIsScannerOpen(true)}
+                      title="อัปโหลดภาพแคปหน้าจอเกม RoV (5×3 หรือ 5×2) เพื่อตรวจจับและเลือกสกินเข้าพรีวิวอัตโนมัติ"
+                    >
+                      <Search size={13} /> ตรวจจับสกินจากภาพ
+                    </button>
+
+                    <button
+                      type="button"
                       className="boardToolBtn undoRedoBtn"
                       onClick={handleUndo}
                       disabled={!undoStack.length}
@@ -2483,8 +2518,15 @@ export function App() {
                     <Sparkles size={26} />
                     <b>ยังไม่ได้เลือกสกินเข้าตาราง</b>
                     <p>
-                      คลิกเลือกหมวดฮีโร่ด้านซ้าย (หรือด้านบนในมือถือ) แล้วแตะสกินเพื่อนำมาเรียงโชว์ในพรีวิวนี้ได้เลย
+                      คลิกเลือกหมวดฮีโร่ด้านซ้าย (หรือด้านบนในมือถือ) แล้วแตะสกินเพื่อนำมาเรียงโชว์ในพรีวิว หรืออัปโหลดภาพแคปหน้าจอจากเกมเพื่อแมตช์สกินอัตโนมัติ
                     </p>
+                    <button
+                      type="button"
+                      className="primary emptyBoardScanBtn"
+                      onClick={() => setIsScannerOpen(true)}
+                    >
+                      <Search size={15} /> สแกนรูปแคปหน้าจอ RoV (5×3 / 5×2)
+                    </button>
                   </div>
                 ) : (
                   <div className="sortskinLiveBoardCanvasWrap">
@@ -2613,6 +2655,15 @@ export function App() {
                 </div>
 
                 <div className="boardActionsGroup">
+                  <button
+                    type="button"
+                    className="boardToolBtn scannerTriggerBtn"
+                    onClick={() => setIsScannerOpen(true)}
+                    title="อัปโหลดภาพแคปหน้าจอเกม RoV (5×3 หรือ 5×2) เพื่อตรวจจับและเลือกสกินเข้าพรีวิวอัตโนมัติ"
+                  >
+                    <Search size={13} /> ตรวจจับสกินจากภาพ
+                  </button>
+
                   <button
                     type="button"
                     className="boardToolBtn undoRedoBtn"
@@ -3075,6 +3126,15 @@ export function App() {
       <FloatingScratchpad
         onCaptureCurrentBoard={handleCaptureBoardToScratchpad}
         hasBoardSkins={selectedSkins.length > 0}
+        notify={notify}
+      />
+
+      {/* RoV 5x3 & 5x2 Screenshot Skin Detector Modal */}
+      <SkinScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        heroes={heroes}
+        onImportMatchedSkins={handleImportScannedSkins}
         notify={notify}
       />
 
