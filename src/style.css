@@ -3065,76 +3065,122 @@ footer span {
 }
 
 /* ==========================================================================
-   FLOATING SKIN POPOVER EMERGING FROM HERO CATEGORY (Matches IMG_0443)
+   HORIZONTAL SKIN STRIP DOCK ABOVE PREVIEW BOARD (Never covers preview board!)
    ========================================================================== */
-.heroSkinsFloatingPopover {
-  position: absolute;
-  left: calc(100% + 8px);
-  top: 6px;
-  width: min(350px, calc(100vw - 320px));
-  max-height: 390px;
-  background: rgba(255, 255, 255, 0.97);
-  backdrop-filter: blur(10px);
-  border: 1px solid #ece2eb;
-  border-radius: 16px;
-  box-shadow:
-    0 14px 36px rgba(38, 22, 42, 0.15),
-    0 3px 10px rgba(38, 22, 42, 0.07);
+.heroSkinsHorizontalDock {
+  background: linear-gradient(180deg, #fffafd 0%, #fcf4fa 100%);
+  border-bottom: 1.5px solid #ead4e7;
   display: flex;
   flex-direction: column;
-  z-index: 80;
-  overflow: hidden;
-  animation: floatingPopoverIn 0.16s cubic-bezier(0.2, 0.85, 0.25, 1);
+  animation: horizontalDockSlideDown 0.16s cubic-bezier(0.2, 0.85, 0.25, 1);
 }
 
-@keyframes floatingPopoverIn {
+@keyframes horizontalDockSlideDown {
   from {
     opacity: 0;
-    transform: translateX(-8px) scale(0.98);
+    transform: translateY(-6px);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateY(0);
   }
 }
 
-.floatingPopoverHeader {
+.horizontalDockHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 9px 12px;
-  border-bottom: 1px solid #f1eaf1;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 9px 16px;
+  border-bottom: 1px solid #f2e3f0;
   background: #ffffff;
 }
 
-.floatingPopoverTitle {
+.horizontalDockTitleGroup {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
-.floatingPopoverTitle span {
+.horizontalDockHeroThumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  font: 700 14px 'Playfair Display', serif;
+  border: 1px solid #e6cfe2;
+}
+
+.horizontalDockHeroThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.horizontalDockTitleText {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.horizontalDockTitleText span {
   font-size: 12px;
   color: #8c7b8f;
   font-weight: 500;
 }
 
-.floatingPopoverTitle b {
-  font-size: 14px;
+.horizontalDockTitleText b {
+  font-size: 15px;
   font-weight: 700;
   color: #231a26;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.floatingPopoverRight {
+.horizontalDockCountPill {
+  background: #faf0f7;
+  border: 1px solid #e7cfe2;
+  color: #6f4b6d;
+  border-radius: 99px;
+  padding: 2px 9px;
+  font-size: 11.5px;
+}
+
+.horizontalDockCountPill b {
+  color: #b85696;
+}
+
+.horizontalDockActions {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.horizontalDockSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f6eff5;
+  border: 1px solid #e5d0e2;
+  border-radius: 99px;
+  padding: 4px 11px;
+  color: #8e7391;
+  width: 190px;
+}
+
+.horizontalDockSearch input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  width: 100%;
+  font-size: 12px;
+  color: #3f2b42;
 }
 
 .floatingSelectAllBtn {
@@ -3142,8 +3188,8 @@ footer span {
   border: 1px solid #e7cfe2;
   color: #7c4d75;
   border-radius: 99px;
-  padding: 3px 8px;
-  font-size: 10.5px;
+  padding: 4px 10px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -3152,67 +3198,75 @@ footer span {
   background: #f3e2ef;
 }
 
-.floatingPopoverCount {
-  font-size: 12px;
-  color: #7a6a7d;
-  font-weight: 600;
-}
-
 .floatingPopoverCloseBtn {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border-radius: 50%;
   border: 0;
-  background: transparent;
+  background: #f5edf4;
   color: #6f5e73;
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1;
   display: grid;
   place-items: center;
 }
 
 .floatingPopoverCloseBtn:hover {
-  background: #f5eef4;
+  background: #ead7e8;
   color: #2d1f30;
 }
 
-.floatingPopoverSearchRow {
-  padding: 7px 10px 0;
+.horizontalDockBody {
+  padding: 10px 16px 12px;
 }
 
-.floatingPopoverBody {
-  padding: 9px 10px 11px;
-  overflow-y: auto;
-  flex: 1;
-  max-height: 310px;
+.horizontalDockFilmstrip {
+  display: flex;
+  align-items: stretch;
+  gap: 9px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
-.floatingPopoverSkinGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  align-content: start;
+.horizontalDockFilmstrip::-webkit-scrollbar {
+  height: 6px;
 }
 
-.floatingPopoverSkinCard {
+.horizontalDockFilmstrip::-webkit-scrollbar-track {
+  background: #f4eaf2;
+  border-radius: 99px;
+}
+
+.horizontalDockFilmstrip::-webkit-scrollbar-thumb {
+  background: #d5a8cb;
+  border-radius: 99px;
+}
+
+.horizontalDockSkinCard {
   position: relative;
-  border-radius: 8px;
+  width: 88px;
+  flex: 0 0 88px;
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
   background: #f7f2f6;
-  border: 1.5px solid transparent;
+  border: 2px solid transparent;
+  scroll-snap-align: start;
   transition: transform 0.13s ease, box-shadow 0.13s ease, border-color 0.13s ease;
 }
 
-.floatingPopoverSkinCard:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(55, 30, 54, 0.14);
+.horizontalDockSkinCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(55, 30, 54, 0.16);
 }
 
-.floatingPopoverSkinCard.chosen {
+.horizontalDockSkinCard.chosen {
   border-color: #e8845b;
-  box-shadow: 0 0 0 1.5px rgba(232, 132, 91, 0.25);
+  box-shadow: 0 0 0 2px rgba(232, 132, 91, 0.25);
 }
 
 .floatingPopoverSkinArt {
@@ -3236,10 +3290,10 @@ footer span {
 .floatingPopoverSkinArt .skinCountBadge {
   right: 4px;
   top: 4px;
-  min-width: 21px;
-  height: 18px;
+  min-width: 22px;
+  height: 19px;
   padding: 0 5px;
-  font-size: 9.5px;
+  font-size: 10px;
   border-width: 1.5px;
 }
 
@@ -3247,12 +3301,12 @@ footer span {
   position: absolute;
   top: 4px;
   left: 4px;
-  width: 19px;
-  height: 19px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   border-radius: 50%;
-  background: rgba(25, 18, 28, 0.78);
-  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  background: rgba(25, 18, 28, 0.8);
+  border: 1.5px solid rgba(255, 255, 255, 0.78);
   color: #ffffff;
   font-size: 13px;
   font-weight: 800;
@@ -3265,11 +3319,11 @@ footer span {
 .floatingSkinBottomCaption {
   position: absolute;
   inset: auto 0 0 0;
-  padding: 14px 4px 4px;
+  padding: 16px 4px 4px;
   background: linear-gradient(
     to top,
-    rgba(18, 12, 22, 0.84) 0%,
-    rgba(18, 12, 22, 0.36) 58%,
+    rgba(18, 12, 22, 0.86) 0%,
+    rgba(18, 12, 22, 0.38) 58%,
     transparent 100%
   );
   text-align: center;
@@ -3279,7 +3333,7 @@ footer span {
 .floatingSkinBottomCaption b {
   display: block;
   color: #ffffff;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.15;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
@@ -3291,14 +3345,20 @@ footer span {
 
 .nestedEmptySkinBox {
   text-align: center;
-  padding: 28px 14px;
+  padding: 20px 14px;
   background: #fcf6fa;
   border: 1px dashed #e3c8de;
   border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.nestedEmptySkinBox.compactEmptyBox {
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 10px 14px;
 }
 
 .nestedEmptySkinBox p {
@@ -3781,13 +3841,9 @@ footer span {
     grid-template-columns: 265px minmax(0, 1fr);
   }
 
-  .heroSkinsFloatingPopover {
-    width: min(330px, calc(100vw - 285px));
-    max-height: 360px;
-  }
-
-  .floatingPopoverBody {
-    max-height: 280px;
+  .horizontalDockSkinCard {
+    width: 82px;
+    flex: 0 0 82px;
   }
 }
 
@@ -3809,25 +3865,17 @@ footer span {
     max-height: 195px;
   }
 
-  .heroSkinsFloatingPopover {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    top: 76px;
-    width: auto;
-    max-width: 350px;
-    max-height: 330px;
-    z-index: 120;
-    box-shadow: 0 18px 44px rgba(28, 14, 32, 0.28);
+  .horizontalDockHeader {
+    padding: 8px 12px;
   }
 
-  .floatingPopoverBody {
-    max-height: 250px;
+  .horizontalDockBody {
+    padding: 8px 12px 10px;
   }
 
-  .floatingPopoverSkinGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
+  .horizontalDockSkinCard {
+    width: 78px;
+    flex: 0 0 78px;
   }
 
   .sortskinPreviewGrid {
