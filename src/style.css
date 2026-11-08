@@ -5146,3 +5146,796 @@ footer span {
 .scannerViewBoardBtn {
   white-space: nowrap;
 }
+
+/* ==========================================================================
+   MENU 3 & MENU 4: ROV PROFILE BANNER + SEAMLESS SKIN GRID STUDIO
+   ========================================================================== */
+.bannerStudioPanel {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.bannerStudioTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 16px 22px;
+  background: linear-gradient(120deg, #fceff8 0%, #f1ecfd 100%);
+  border-bottom: 1px solid #ead7e8;
+}
+
+.bannerStudioTitleSide h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  color: #563759;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.bannerStudioStepTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.studioModeTabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1.5px solid #e4cae0;
+  color: #6b496e;
+  border-radius: 99px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.studioModeTabBtn span {
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: #f3e4f0;
+  color: #7c5278;
+  display: inline-grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.studioModeTabBtn.active {
+  background: linear-gradient(135deg, #c973b0, #9b62b8);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(168, 96, 158, 0.3);
+}
+
+.studioModeTabBtn.active span {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.bannerStudioMainGrid {
+  display: grid;
+  grid-template-columns: 390px minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 700px;
+}
+
+.bannerStudioSidebar {
+  border-right: 1px solid #eeddec;
+  background: #fdf8fc;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 860px;
+  overflow-y: auto;
+}
+
+.studioCardBox {
+  background: #ffffff;
+  border: 1px solid #ead8e8;
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 4px 14px rgba(98, 58, 96, 0.04);
+}
+
+.studioCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.studioCardHead b {
+  font-size: 13.5px;
+  color: #4a2f4d;
+}
+
+.studioStepBadge {
+  background: #f8eaf5;
+  border: 1px solid #e5c8e0;
+  color: #8f4e82;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.studioCardHint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #826685;
+}
+
+.studioUploadBtnRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.studioUploadBtn,
+.studioSampleBtn {
+  flex: 1;
+  min-width: 140px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border-radius: 11px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+
+.studioPresetList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.studioPresetItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  padding: 8px 11px;
+  border-radius: 11px;
+  background: #fcf7fb;
+  border: 1px solid #ead7e7;
+  color: #593b5c;
+  transition: all 0.14s ease;
+}
+
+.studioPresetItem b {
+  display: block;
+  font-size: 11.5px;
+  color: #4c304f;
+}
+
+.studioPresetItem small {
+  display: block;
+  font-size: 10.5px;
+  color: #896c8c;
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.studioPresetItem.active {
+  background: #fdf0f9;
+  border: 1.5px solid #c973b0;
+}
+
+/* Mini Cropped & Faded PNG Checkerboard Preview */
+.fadedProfileMiniPreviewBox {
+  background: #faf2f8;
+  border: 1px solid #e6cfe3;
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fadedMiniTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b496e;
+}
+
+.tinyDownloadFadeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #ddb9d6;
+  color: #7b4873;
+  border-radius: 99px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.checkerboardPreviewFrame,
+.checkerboardStage {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, #eee5ee 25%, transparent 25%),
+    linear-gradient(-45deg, #eee5ee 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eee5ee 75%),
+    linear-gradient(-45deg, transparent 75%, #eee5ee 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.checkerboardPreviewFrame {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dec4da;
+  max-height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.checkerboardPreviewFrame img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Studio Sliders */
+.studioSlidersGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+}
+
+.studioSlidersGrid.compactSliders {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.studioSliderRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.studioSliderRow label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #6c4d70;
+}
+
+.studioSliderRow input[type='range'] {
+  width: 100%;
+  accent-color: #c46dad;
+  cursor: pointer;
+}
+
+.rightBgModeTabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rightBgModeTabs button {
+  flex: 1;
+  min-width: 95px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: #faf2f8;
+  border: 1px solid #e4cbe0;
+  color: #6b496e;
+  border-radius: 9px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.rightBgModeTabs button.active {
+  background: #f0d8ec;
+  border-color: #c26eab;
+  color: #4f2e52;
+  font-weight: 700;
+}
+
+.studioDivider {
+  border: 0;
+  border-top: 1px dashed #ead4e7;
+  margin: 4px 0;
+}
+
+/* Layer Inspector */
+.selectedLayerInspector {
+  background: #fcf5fa;
+  border: 1px solid #e5c8e0;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inspectorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.inspectorHeader b {
+  font-size: 12px;
+  color: #563659;
+}
+
+.shapeOptionPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.shapePillBtn {
+  background: #ffffff;
+  border: 1px solid #e2c7de;
+  color: #6b496e;
+  border-radius: 99px;
+  padding: 4px 9px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.shapePillBtn.active {
+  background: linear-gradient(120deg, #d382ba, #a86ec4);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.stickerExtraRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: #6c4d70;
+}
+
+.stickerExtraRow input,
+.studioFieldRow select,
+.studioTextArea {
+  border: 1px solid #e2c7de;
+  border-radius: 9px;
+  padding: 6px 9px;
+  font-size: 12px;
+  background: #ffffff;
+  color: #3f2842;
+}
+
+.studioFieldRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #6c4d70;
+}
+
+.studioFieldRow select {
+  flex: 1;
+}
+
+.fullWidthNextStepBtn,
+.studioFinalExportBtn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* Text Preset Buttons */
+.textPresetButtonsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.textPresetBtn {
+  background: #faf1f8;
+  border: 1px solid #e5cae0;
+  color: #623e65;
+  border-radius: 10px;
+  padding: 7px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.textPresetBtn:hover {
+  background: #f3e1ef;
+}
+
+.textPresetBtn.primaryTextAddBtn {
+  background: linear-gradient(120deg, #d88bc0, #b27ec9);
+  border-color: transparent;
+  color: #ffffff;
+  justify-content: center;
+}
+
+.textLayersPillStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.textLayerChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #e2c7de;
+  color: #69476c;
+  border-radius: 99px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.textLayerChip.active {
+  background: #5b375e;
+  border-color: #5b375e;
+  color: #ffffff;
+}
+
+.colorPickersInlineRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.colorSwatchLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #69476c;
+}
+
+.colorSwatchLabel input[type='color'] {
+  width: 28px;
+  height: 24px;
+  border: 1px solid #d9bdd5;
+  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.alignBtnsGroup {
+  display: inline-flex;
+  background: #ffffff;
+  border: 1px solid #e2c7de;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.alignBtnsGroup button {
+  background: transparent;
+  border: 0;
+  padding: 4px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #6b496e;
+}
+
+.alignBtnsGroup button.active {
+  background: #ead4e7;
+  color: #462849;
+}
+
+.studioRecChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* ==========================================================================
+   RIGHT COLUMN: COMPOSITE POSTER INTERACTIVE STAGE
+   ========================================================================== */
+.bannerStudioPreviewColumn {
+  display: flex;
+  flex-direction: column;
+  background: #fffafd;
+  min-width: 0;
+}
+
+.studioPreviewToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 11px 18px;
+  background: #ffffff;
+  border-bottom: 1px solid #eeddec;
+}
+
+.studioPreviewTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #4d3350;
+}
+
+.studioPreviewActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compositePosterScrollWrap {
+  padding: 18px 20px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.compositePosterSheet {
+  width: 100%;
+  max-width: 1180px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 16px 44px rgba(55, 30, 56, 0.16);
+  border: 1px solid #e4cbe0;
+  background: #1d2640;
+  display: flex;
+  flex-direction: column;
+  line-height: 0;
+}
+
+.compositeTopBannerStage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: linear-gradient(90deg, #1f2b4d 0%, #26365e 40%, #1d2642 100%);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.bannerRightBgImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  transform-origin: center center;
+}
+
+.bannerFadedProfileImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.bannerEmptyProfilePrompt {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(380px, 46%);
+  padding: 18px 16px;
+  border-radius: 14px;
+  border: 2px dashed rgba(255, 255, 255, 0.55);
+  background: rgba(24, 34, 62, 0.78);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  cursor: pointer;
+  z-index: 3;
+  line-height: 1.4;
+}
+
+.bannerEmptyProfilePrompt b {
+  font-size: 13px;
+}
+
+.bannerEmptyProfilePrompt small {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Draggable Sticker / PNG Overlays on Banner Stage */
+.draggableBannerSticker {
+  position: absolute;
+  z-index: 5;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.draggableBannerSticker:active {
+  cursor: grabbing;
+}
+
+.draggableBannerSticker.selectedLayer {
+  outline: 2px dashed #ffcf5c;
+  outline-offset: 4px;
+  z-index: 8;
+}
+
+.stickerShapeInner {
+  width: 100%;
+  overflow: hidden;
+  border-style: solid;
+  box-sizing: border-box;
+}
+
+.draggableBannerSticker.shape-free .stickerShapeInner {
+  border: 0;
+}
+
+.draggableBannerSticker.shape-heart .stickerShapeInner,
+.draggableBannerSticker.shape-square_frame .stickerShapeInner,
+.draggableBannerSticker.shape-circle .stickerShapeInner {
+  aspect-ratio: 1 / 1;
+}
+
+.draggableBannerSticker.shape-circle .stickerShapeInner {
+  border-radius: 50%;
+}
+
+.draggableBannerSticker.shape-rounded .stickerShapeInner {
+  border-radius: 14%;
+}
+
+.draggableBannerSticker.shape-square_frame .stickerShapeInner {
+  border-radius: 6px;
+}
+
+.draggableBannerSticker.shape-heart .stickerShapeInner {
+  clip-path: path('M 50 22 C 50 6, 6 6, 6 36 C 6 64, 32 80, 50 96 C 68 80, 94 64, 94 36 C 94 6, 50 6, 50 22 Z');
+  border-radius: 50% 50% 45% 45% / 42% 42% 58% 58%;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.stickerShapeInner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.stickerRibbonTag {
+  margin-top: -10%;
+  padding: 2px 9px;
+  border-radius: 99px;
+  border: 1.5px solid #fff3c4;
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* Draggable Text Overlays on Banner Stage */
+.draggableBannerText {
+  position: absolute;
+  z-index: 10;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  font-weight: 900;
+  white-space: pre;
+  padding: 4px 8px;
+  border-radius: 8px;
+  paint-order: stroke fill;
+}
+
+.draggableBannerText:active {
+  cursor: grabbing;
+}
+
+.draggableBannerText.selectedLayer {
+  outline: 2px dashed rgba(255, 224, 115, 0.95);
+  background: rgba(20, 14, 28, 0.22);
+}
+
+/* Seamless Bottom Skin Grid inside Composite Poster */
+.compositeBottomSkinGrid {
+  display: grid;
+  width: 100%;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  background: #1b1524;
+  line-height: 0;
+}
+
+.compositeCustomBottomGrid img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.compositeBottomEmptyNotice {
+  padding: 26px 18px;
+  background: #faf0f7;
+  color: #6b496e;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.inlineLinkBtn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #b54e92;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 1024px) {
+  .bannerStudioMainGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .bannerStudioSidebar {
+    border-right: 0;
+    border-bottom: 1px solid #eeddec;
+    max-height: none;
+  }
+}
