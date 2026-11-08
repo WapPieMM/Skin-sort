@@ -3069,16 +3069,17 @@ footer span {
    ========================================================================== */
 .heroSkinsFloatingPopover {
   position: absolute;
-  left: calc(100% + 10px);
+  left: calc(100% + 8px);
   top: 6px;
-  width: min(560px, calc(100vw - 340px));
-  max-height: 670px;
-  background: #ffffff;
+  width: min(350px, calc(100vw - 320px));
+  max-height: 390px;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(10px);
   border: 1px solid #ece2eb;
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow:
-    0 18px 48px rgba(38, 22, 42, 0.16),
-    0 4px 14px rgba(38, 22, 42, 0.08);
+    0 14px 36px rgba(38, 22, 42, 0.15),
+    0 3px 10px rgba(38, 22, 42, 0.07);
   display: flex;
   flex-direction: column;
   z-index: 80;
@@ -3101,8 +3102,8 @@ footer span {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 14px 18px;
+  gap: 8px;
+  padding: 9px 12px;
   border-bottom: 1px solid #f1eaf1;
   background: #ffffff;
 }
@@ -3110,18 +3111,18 @@ footer span {
 .floatingPopoverTitle {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .floatingPopoverTitle span {
-  font-size: 13.5px;
+  font-size: 12px;
   color: #8c7b8f;
   font-weight: 500;
 }
 
 .floatingPopoverTitle b {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: #231a26;
   white-space: nowrap;
@@ -3132,7 +3133,7 @@ footer span {
 .floatingPopoverRight {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -3141,8 +3142,8 @@ footer span {
   border: 1px solid #e7cfe2;
   color: #7c4d75;
   border-radius: 99px;
-  padding: 4px 10px;
-  font-size: 11px;
+  padding: 3px 8px;
+  font-size: 10.5px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -3152,20 +3153,20 @@ footer span {
 }
 
 .floatingPopoverCount {
-  font-size: 13.5px;
+  font-size: 12px;
   color: #7a6a7d;
   font-weight: 600;
 }
 
 .floatingPopoverCloseBtn {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border-radius: 50%;
   border: 0;
   background: transparent;
   color: #6f5e73;
-  font-size: 22px;
+  font-size: 19px;
   line-height: 1;
   display: grid;
   place-items: center;
@@ -3177,41 +3178,41 @@ footer span {
 }
 
 .floatingPopoverSearchRow {
-  padding: 10px 16px 0;
+  padding: 7px 10px 0;
 }
 
 .floatingPopoverBody {
-  padding: 14px 16px 18px;
+  padding: 9px 10px 11px;
   overflow-y: auto;
   flex: 1;
-  max-height: 590px;
+  max-height: 310px;
 }
 
 .floatingPopoverSkinGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 6px;
   align-content: start;
 }
 
 .floatingPopoverSkinCard {
   position: relative;
-  border-radius: 11px;
+  border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
   background: #f7f2f6;
-  border: 2px solid transparent;
+  border: 1.5px solid transparent;
   transition: transform 0.13s ease, box-shadow 0.13s ease, border-color 0.13s ease;
 }
 
 .floatingPopoverSkinCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(55, 30, 54, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(55, 30, 54, 0.14);
 }
 
 .floatingPopoverSkinCard.chosen {
   border-color: #e8845b;
-  box-shadow: 0 0 0 2px rgba(232, 132, 91, 0.25);
+  box-shadow: 0 0 0 1.5px rgba(232, 132, 91, 0.25);
 }
 
 .floatingPopoverSkinArt {
@@ -3222,7 +3223,7 @@ footer span {
   display: grid;
   place-items: center;
   color: #fff;
-  font: 700 20px 'Playfair Display', serif;
+  font: 700 15px 'Playfair Display', serif;
 }
 
 .floatingPopoverSkinArt img {
@@ -3232,18 +3233,28 @@ footer span {
   display: block;
 }
 
+.floatingPopoverSkinArt .skinCountBadge {
+  right: 4px;
+  top: 4px;
+  min-width: 21px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 9.5px;
+  border-width: 1.5px;
+}
+
 .floatingSkinMinusBtn {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 24px;
-  height: 24px;
+  top: 4px;
+  left: 4px;
+  width: 19px;
+  height: 19px;
   padding: 0;
   border-radius: 50%;
   background: rgba(25, 18, 28, 0.78);
   border: 1.5px solid rgba(255, 255, 255, 0.75);
   color: #ffffff;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
   line-height: 1;
   display: grid;
@@ -3254,11 +3265,11 @@ footer span {
 .floatingSkinBottomCaption {
   position: absolute;
   inset: auto 0 0 0;
-  padding: 20px 6px 6px;
+  padding: 14px 4px 4px;
   background: linear-gradient(
     to top,
-    rgba(18, 12, 22, 0.82) 0%,
-    rgba(18, 12, 22, 0.38) 58%,
+    rgba(18, 12, 22, 0.84) 0%,
+    rgba(18, 12, 22, 0.36) 58%,
     transparent 100%
   );
   text-align: center;
@@ -3268,9 +3279,9 @@ footer span {
 .floatingSkinBottomCaption b {
   display: block;
   color: #ffffff;
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.15;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -3771,7 +3782,12 @@ footer span {
   }
 
   .heroSkinsFloatingPopover {
-    width: min(510px, calc(100vw - 295px));
+    width: min(330px, calc(100vw - 285px));
+    max-height: 360px;
+  }
+
+  .floatingPopoverBody {
+    max-height: 280px;
   }
 }
 
@@ -3795,18 +3811,23 @@ footer span {
 
   .heroSkinsFloatingPopover {
     position: fixed;
-    left: 10px;
-    right: 10px;
+    left: 12px;
+    right: 12px;
     top: 76px;
     width: auto;
-    max-height: calc(100vh - 96px);
+    max-width: 350px;
+    max-height: 330px;
     z-index: 120;
-    box-shadow: 0 22px 60px rgba(28, 14, 32, 0.34);
+    box-shadow: 0 18px 44px rgba(28, 14, 32, 0.28);
+  }
+
+  .floatingPopoverBody {
+    max-height: 250px;
   }
 
   .floatingPopoverSkinGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .sortskinPreviewGrid {
