@@ -5939,3 +5939,278 @@ footer span {
     max-height: none;
   }
 }
+
+/* ============================================================
+   UX / UI / CTA / CONVERSION ENHANCEMENTS
+   ============================================================ */
+
+.topbarRightCluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bannerToggleChip {
+  background: #f8eef7;
+  border: 1px solid #ead5e7;
+  color: #845981;
+  border-radius: 99px;
+  padding: 7px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.bannerToggleChip:hover {
+  background: #f2dff0;
+  color: #6b3f68;
+}
+
+.killerScanHeroBtn {
+  background: linear-gradient(125deg, #c6649f, #8f68c4);
+  box-shadow: 0 8px 20px rgba(173, 98, 162, 0.35);
+  font-size: 13px;
+  padding: 12px 20px;
+}
+
+.bannerShowcaseArt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1;
+  max-width: 46%;
+}
+
+.showcaseBeforeCard,
+.showcaseAfterCard {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1.5px solid #ffffff;
+  border-radius: 16px;
+  padding: 7px;
+  box-shadow: 0 12px 28px rgba(130, 92, 140, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.showcaseBeforeCard {
+  width: 185px;
+  opacity: 0.94;
+}
+
+.showcaseAfterCard {
+  width: 225px;
+  cursor: pointer;
+  border-color: #e6badc;
+  box-shadow: 0 14px 32px rgba(164, 96, 152, 0.28);
+}
+
+.showcaseAfterCard:hover {
+  transform: translateY(-2px);
+}
+
+.showcaseBeforeCard img,
+.showcaseAfterCard img {
+  width: 100%;
+  height: 126px;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+
+.showcaseTag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #7c5c7f;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.showcaseTag.highlightTag {
+  color: #a64982;
+}
+
+.showcaseArrowBadge {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #a8578e;
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(145, 95, 142, 0.22);
+  flex-shrink: 0;
+}
+
+/* Tier 1 & Tier 2 Board Toolbars */
+.scannerPrimaryPillBtn {
+  background: linear-gradient(120deg, #fcebf7, #efe8fc) !important;
+  border: 1px solid #dfb7d8 !important;
+  color: #9b447c !important;
+  font-weight: 700 !important;
+  padding: 6px 12px !important;
+}
+
+.scannerPrimaryPillBtn:hover {
+  background: linear-gradient(120deg, #f8ddf0, #e6dcfb) !important;
+}
+
+.boardSecondaryDownloadBtn {
+  padding: 8px 13px;
+  font-size: 12px;
+  border-radius: 99px;
+}
+
+.nextStepBannerCtaBtn {
+  background: linear-gradient(125deg, #c867a3, #8f6bc2) !important;
+  color: #ffffff !important;
+  padding: 8px 15px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  border-radius: 99px !important;
+  box-shadow: 0 6px 16px rgba(172, 100, 162, 0.3) !important;
+}
+
+.sortskinBoardSubToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #fcf6fb;
+  border-bottom: 1px solid #eeddec;
+}
+
+.subToolbarLeft,
+.subToolbarRight {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Canvas Backdrop Switcher (Dark / Light / Checker) */
+.canvasBackdropToggleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f5eaf4;
+  border: 1px solid #e7d1e4;
+  border-radius: 99px;
+  padding: 3px 6px;
+  font-size: 11px;
+  color: #7c5c7e;
+}
+
+.canvasBackdropToggleGroup span {
+  padding: 0 5px;
+  font-weight: 600;
+}
+
+.canvasBackdropToggleGroup button {
+  background: transparent;
+  border-radius: 99px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #7c5c7e;
+  transition: all 0.14s ease;
+}
+
+.canvasBackdropToggleGroup button.active {
+  background: #ffffff;
+  color: #9e477f;
+  box-shadow: 0 2px 6px rgba(145, 92, 138, 0.18);
+}
+
+/* Preview Canvas Backdrop Modes */
+.sortskinLiveBoardCanvasWrap.backdrop-dark,
+.compositePosterScrollWrap.backdrop-dark {
+  background: #1a1625;
+  padding: 14px;
+}
+
+.sortskinLiveBoardCanvasWrap.backdrop-light,
+.compositePosterScrollWrap.backdrop-light {
+  background: #faf2f8;
+  padding: 14px;
+}
+
+.sortskinLiveBoardCanvasWrap.backdrop-checker,
+.compositePosterScrollWrap.backdrop-checker {
+  background-color: #f3edf5;
+  background-image:
+    linear-gradient(45deg, #e2d6e6 25%, transparent 25%),
+    linear-gradient(-45deg, #e2d6e6 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e2d6e6 75%),
+    linear-gradient(-45deg, transparent 75%, #e2d6e6 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  padding: 14px;
+}
+
+/* Bottom Conversion Callout Bar under Step 2 Grid */
+.boardBottomConversionBar {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #fdf5fb, #f5effc);
+  border: 1px solid #ead4e8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.conversionBarSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conversionBarSummary b {
+  font-size: 13.5px;
+  color: #5b3c60;
+}
+
+.conversionBarSummary small {
+  font-size: 11.5px;
+  color: #86688a;
+}
+
+.conversionBarButtons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.studioLoadingFallback {
+  padding: 48px 24px;
+  text-align: center;
+  font-weight: 600;
+  color: #7d5b80;
+}
+
+@media (max-width: 960px) {
+  .bannerShowcaseArt {
+    max-width: 100%;
+    width: 100%;
+    justify-content: center;
+    margin-top: 14px;
+  }
+
+  .heroBanner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+

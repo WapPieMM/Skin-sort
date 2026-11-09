@@ -266,6 +266,8 @@ export default function HeroSkinModal({
                       <img
                         src={h.image}
                         alt={h.name}
+                        loading="lazy"
+                        decoding="async"
                         referrerPolicy="no-referrer"
                       />
                     ) : (
@@ -433,12 +435,16 @@ export default function HeroSkinModal({
                         <img
                           src={skin.image}
                           alt={skin.name}
+                          loading="lazy"
+                          decoding="async"
                           referrerPolicy="no-referrer"
                         />
                       ) : currentHero.image ? (
                         <img
                           src={currentHero.image}
                           alt={skin.name}
+                          loading="lazy"
+                          decoding="async"
                           referrerPolicy="no-referrer"
                           className="fallbackHeroImg"
                         />

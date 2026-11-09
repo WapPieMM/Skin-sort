@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import AdminLogin from './components/AdminLogin';
 import {
   Heart,
@@ -25,13 +25,13 @@ import {
   PASTEL_PALETTE,
 } from './data/defaultCatalog';
 import { uploadImageFile } from './utils/cloudStorage';
-import HeroSkinModal from './components/HeroSkinModal';
-import PosterCanvas from './components/PosterCanvas';
-import FloatingScratchpad from './components/FloatingScratchpad';
-import SkinScannerModal from './components/SkinScannerModal';
-import ProfileBannerStudio from './components/ProfileBannerStudio';
 import { warmUpCatalogSkinIndexInBackground } from './utils/skinScanner';
 import { loadCatalogFromIndexedDB, saveCatalogToIndexedDB } from './utils/catalogStorage';
+
+const HeroSkinModal = lazy(() => import('./components/HeroSkinModal'));
+const FloatingScratchpad = lazy(() => import('./components/FloatingScratchpad'));
+const SkinScannerModal = lazy(() => import('./components/SkinScannerModal'));
+const ProfileBannerStudio = lazy(() => import('./components/ProfileBannerStudio'));
 
 const CATALOG_STORAGE_KEY = 'rov_white_angel_catalog_v2';
 const CATALOG_SKIN_MIGRATION_KEY = 'rov_white_angel_catalog_skins_cleared_v1';
@@ -413,17 +413,38 @@ export function App() {
     return map;
   }, [heroes]);
 
-  // 2. Navigation & Step State (Restored from saved draft if present)
+  // 2. Navigation & Step State (Default to Step 2 so users immediately land on the Skin Selector & Scanner workspace)
   const [step, setStep] = useState(() => {
     const draft = loadWorkspaceDraft();
-    if (draft?.step && [1, 2, 3, 4].includes(Number(draft.step))) {
+    if (draft?.step && [2, 3, 4].includes(Number(draft.step))) {
       return Number(draft.step);
     }
-    if (Array.isArray(draft?.selectedSkins) && draft.selectedSkins.length > 0) {
-      return 2;
-    }
-    return 1;
+    return 2;
   });
+  const [isBannerCollapsed, setIsBannerCollapsed] = useState(false);
+  const [boardBackdrop, setBoardBackdrop] = useState('dark');
+
+  // Dynamic Canonical & OpenGraph URL resolution for SEO
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const canonicalHref = window.location.origin + window.location.pathname;
+    let linkEl = document.querySelector('link[rel="canonical"]');
+    if (!linkEl) {
+      linkEl = document.createElement('link');
+      linkEl.setAttribute('rel', 'canonical');
+      document.head.appendChild(linkEl);
+    }
+    linkEl.setAttribute('href', canonicalHref);
+
+    let ogUrlEl = document.querySelector('meta[property="og:url"]');
+    if (!ogUrlEl) {
+      ogUrlEl = document.createElement('meta');
+      ogUrlEl.setAttribute('property', 'og:url');
+      document.head.appendChild(ogUrlEl);
+    }
+    ogUrlEl.setAttribute('content', canonicalHref);
+  }, []);
+
   const [activeHeroId, setActiveHeroId] = useState(
     () => heroes[0]?.id || 'alice'
   );
@@ -1518,132 +1539,151 @@ export function App() {
         </div>
       )}
 
-      {/* Top Navigation Bar */}
+      {/* Top Navigation Bar (Consolidated Single-Bar Stepper + Admin Controls) */}
       <header className="topbar">
         <div
           className="brand"
-          onClick={() => setStep(1)}
+          onClick={() => setStep(2)}
           style={{ cursor: 'pointer' }}
         >
           <span className="brandmark">✧</span>
           <div>
             <b>RoV</b>
-            <small>SKIN COLLECTION</small>
+            <small>POSTER & SKIN STUDIO</small>
           </div>
         </div>
 
-        <nav>
-          <button
-            className={step === 1 ? 'active' : ''}
-            onClick={() => setStep(1)}
-          >
-            1. ฮีโร่ & รูปภาพ
-          </button>
+        <nav aria-label="ขั้นตอนการทำป้ายไอดี RoV">
           <button
             className={step === 2 ? 'active' : ''}
             onClick={() => setStep(2)}
           >
-            2. เลือกสกิน ({selectedSkins.length})
+            1. เลือกสกิน & สแกนภาพ ({selectedSkins.length})
           </button>
           <button
             className={step === 3 ? 'active' : ''}
             onClick={() => setStep(3)}
           >
-            3. ตัดโปรไฟล์เฟด & เติม PNG
+            2. ตัดป้ายโปรไฟล์ & ตกแต่ง
           </button>
           <button
             className={step === 4 ? 'active' : ''}
             onClick={() => setStep(4)}
           >
-            4. เติม Text & ส่งออกป้าย
+            3. ใส่ข้อความ & บันทึกป้าย
+          </button>
+          <button
+            className={step === 1 ? 'active navManageBtn' : 'navManageBtn'}
+            onClick={() => setStep(1)}
+            title="หน้าตั้งค่ารูปภาพฮีโร่และเพิ่มสกินสำหรับแอดมิน"
+          >
+            <Edit3 size={13} /> ตั้งค่าฮีโร่
           </button>
           <button
             className="navManageBtn"
             onClick={() => setIsManagerOpen(true)}
+            title="เปิดหน้าต่างจัดการฐานข้อมูลรูปฮีโร่และสกินทั้งหมด"
           >
-            <ImageIcon size={13} /> คลังรูปฮีโร่/สกิน
+            <ImageIcon size={13} /> คลังรูปทั้งหมด
           </button>
         </nav>
 
-        <button
-          className={favorite ? 'heart on' : 'heart'}
-          onClick={() => setFavorite(!favorite)}
-          aria-label="Favorite"
-        >
-          <Heart size={20} fill={favorite ? 'currentColor' : 'none'} />
-        </button>
+        <div className="topbarRightCluster">
+          <button
+            type="button"
+            className="bannerToggleChip"
+            onClick={() => setIsBannerCollapsed((prev) => !prev)}
+            title="ซ่อนหรือแสดงแบนเนอร์แนะนำด้านบนเพื่อเพิ่มพื้นที่จัดตาราง"
+          >
+            {isBannerCollapsed ? 'แสดงแบนเนอร์ ▼' : 'ย่อแบนเนอร์ ▲'}
+          </button>
+
+          <button
+            className={favorite ? 'heart on' : 'heart'}
+            onClick={() => setFavorite(!favorite)}
+            aria-label="Favorite"
+          >
+            <Heart size={20} fill={favorite ? 'currentColor' : 'none'} />
+          </button>
+        </div>
       </header>
 
-      {/* Hero Banner */}
-      <section className="heroBanner">
-        <div className="bannerCopy">
-          <span className="eyebrow">COLLECT · ARRANGE · SEAMLESS GRID</span>
-          <h1>
-            RoV Skin
-            <br />
-            <i>Collection Grid</i>
-          </h1>
-          <p>
-            เลือกรูปสกินที่ต้องการแล้วนำมาเรียงต่อกันเป็นตารางคอลเลกชันแบบไร้ขอบ
-            <br />
-            รองรับ 1–20 รูปต่อแถว พร้อมระบบแนะนำจำนวนรูปต่อแถวอัตโนมัติ ♡
-          </p>
-          <div className="bannerBtnGroup">
-            <button className="primary" onClick={() => setStep(2)}>
-              เริ่มเลือกสกินเลย <ArrowRight size={16} />
-            </button>
-            <button
-              className="secondary"
-              onClick={() => setIsManagerOpen(true)}
-            >
-              <Upload size={15} /> จัดการรูปภาพฮีโร่ & สกินทั้งหมด
-            </button>
-          </div>
-        </div>
-
-        <div className="bannerArt">
-          <div className="halo">✧</div>
-          <div className="artCard">
-            ♡
-            <span>
-              SKIN
-              <br />
-              COLLECTION
+      {/* High-Converting Hero Banner with Before/After Visual Proof */}
+      {!isBannerCollapsed && (
+        <section className="heroBanner">
+          <div className="bannerCopy">
+            <span className="eyebrow">
+              ROV ACCOUNT POSTER & SEAMLESS SKIN GRID · WHITE ANGEL EDITION
             </span>
+            <h1>
+              ทำป้ายโพสต์ขายไอดี &<br />
+              <i>จัดตารางสกิน RoV สำเร็จรูป</i>
+            </h1>
+            <p>
+              สแกนสกินจากภาพแคปจออัตโนมัติ ไม่ต้องนั่งจิ้มทีละรูป · ตัดโปรไฟล์เฟดเนียนกริบ
+              <br />
+              ลากวางป้ายหัวใจและข้อความอิสระ พร้อมเซฟภาพคมชัดระดับ 4K ใน 1 นาที ♡
+            </p>
+            <div className="bannerBtnGroup">
+              <button
+                type="button"
+                className="primary killerScanHeroBtn"
+                onClick={() => {
+                  setStep(2);
+                  setIsScannerOpen(true);
+                }}
+              >
+                <Search size={16} /> สแกนสกินจากภาพแคปจอ (5×3 / 5×2)
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setStep(3)}
+              >
+                <Sparkles size={15} /> ไปตัดป้ายโปรไฟล์เฟดสำเร็จรูป <ArrowRight size={15} />
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setIsManagerOpen(true)}
+              >
+                <Upload size={15} /> จัดการคลังรูปฮีโร่ & สกิน
+              </button>
+            </div>
           </div>
-          <div className="spark s1">✦</div>
-          <div className="spark s2">✧</div>
-        </div>
-      </section>
+
+          <div className="bannerShowcaseArt">
+            <div className="showcaseBeforeCard">
+              <span className="showcaseTag">1. ภาพแคปหน้าจอเกม</span>
+              <img
+                src="/assets/aistudio/IMG_0450_a3eca865.jpeg"
+                alt="ตัวอย่างภาพแคปหน้าจอโปรไฟล์ RoV"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <div className="showcaseArrowBadge">➔</div>
+            <div
+              className="showcaseAfterCard"
+              onClick={() => setStep(3)}
+              title="คลิกเพื่อไปทดลองทำป้ายโปรไฟล์สำเร็จรูป"
+            >
+              <span className="showcaseTag highlightTag">
+                2. ป้ายไอดีสำเร็จรูปพร้อมโพสต์
+              </span>
+              <img
+                src="/assets/aistudio/8216D9F5-EFAD-4C7F-A94E-373788E3D7B3_11e5707b.jpeg"
+                alt="ตัวอย่างป้ายโพสต์ขายไอดี RoV สำเร็จรูป"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Main Workspace */}
       <section className="workspace">
-        <div className="sectionHead">
-          <div>
-            <span className="eyebrow">SEAMLESS SKIN COLLAGE</span>
-            <h2>
-              จัดเรียงรูปสกินโชว์คอลเลกชัน <Sparkles size={20} />
-            </h2>
-          </div>
-
-          <div className="steps">
-            {[
-              { n: 1, label: 'เลือกฮีโร่/ใส่รูป' },
-              { n: 2, label: 'เลือกสกิน' },
-              { n: 3, label: 'ตัดโปรไฟล์เฟด & เติม PNG' },
-              { n: 4, label: 'เติม Text & ส่งออกป้าย' },
-            ].map((item) => (
-              <button
-                key={item.n}
-                className={step === item.n ? 'current' : ''}
-                onClick={() => setStep(item.n)}
-                title={item.label}
-              >
-                {item.n}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* ============================================================
             STEP 1: SELECT HERO & DIRECT HERO IMAGE / DATA INPUT PANEL
@@ -1704,6 +1744,8 @@ export function App() {
                           src={h.image}
                           alt={h.name}
                           className="tileHeroImg"
+                          loading="lazy"
+                          decoding="async"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
@@ -1995,6 +2037,8 @@ export function App() {
                                 <img
                                   src={previewImg}
                                   alt={h.name}
+                                  loading="lazy"
+                                  decoding="async"
                                   referrerPolicy="no-referrer"
                                 />
                               ) : (
@@ -2160,6 +2204,8 @@ export function App() {
                                           <img
                                             src={displayImg}
                                             alt={s.name}
+                                            loading="lazy"
+                                            decoding="async"
                                             referrerPolicy="no-referrer"
                                             draggable={false}
                                           />
@@ -2211,91 +2257,27 @@ export function App() {
                   ("ตารางของคุณ N สกิน" — matches reference image)
                  ================================================== */}
               <div className="sortskinMainBoard">
-                {/* Top Toolbar matching reference screenshot */}
+                {/* Tier 1 Toolbar: Primary Actions & Conversion CTAs */}
                 <div className="sortskinBoardToolbar">
                   <div className="boardTitleGroup">
                     <span className="boardStatusDot" />
-                    <b>ตารางของคุณ</b>
+                    <b>ตารางสกินของคุณ</b>
                     <span className="boardSkinCount tabular">
-                      {selectedSkins.length} สกิน
+                      {selectedSkins.length} รูป
                     </span>
+
+                    <button
+                      type="button"
+                      className="boardToolBtn scannerPrimaryPillBtn"
+                      onClick={() => setIsScannerOpen(true)}
+                      title="อัปโหลดภาพแคปหน้าจอเกม RoV (5×3 หรือ 5×2) เพื่อตรวจจับและนำเข้าสกินอัตโนมัติ"
+                    >
+                      <Search size={13} /> สแกนสกินจากภาพแคปจอ
+                    </button>
                   </div>
 
                   <div className="boardActionsGroup">
-                    <button
-                      type="button"
-                      className="boardToolBtn scannerTriggerBtn"
-                      onClick={() => setIsScannerOpen(true)}
-                      title="อัปโหลดภาพแคปหน้าจอเกม RoV (5×3 หรือ 5×2) เพื่อตรวจจับและเลือกสกินเข้าพรีวิวอัตโนมัติ"
-                    >
-                      <Search size={13} /> ตรวจจับสกินจากภาพ
-                    </button>
-
-                    <button
-                      type="button"
-                      className="boardToolBtn undoRedoBtn"
-                      onClick={handleUndo}
-                      disabled={!undoStack.length}
-                      title="ย้อนกลับการแก้ไขล่าสุด (Ctrl+Z)"
-                    >
-                      <Undo2 size={13} /> ย้อนกลับ
-                      {undoStack.length > 0 && (
-                        <small className="tabular">({undoStack.length})</small>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="boardToolBtn undoRedoBtn iconOnlyBtn"
-                      onClick={handleRedo}
-                      disabled={!redoStack.length}
-                      title="ทำซ้ำรายการที่ย้อนกลับ (Ctrl+Y)"
-                    >
-                      <Redo2 size={13} />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="boardToolBtn"
-                      onClick={sortSkinsByHero}
-                      disabled={!selectedSkins.length}
-                      title="เรียงตามฮีโร่ (A → Z)"
-                    >
-                      <Sparkles size={13} /> เรียงฮีโร่
-                    </button>
-
-                    <button
-                      type="button"
-                      className="boardToolBtn"
-                      onClick={reverseSkinsOrder}
-                      disabled={!selectedSkins.length}
-                      title="สลับลำดับหน้า-หลัง"
-                    >
-                      ⇄ สลับลำดับ
-                    </button>
-
-                    <button
-                      type="button"
-                      className={
-                        'boardToolBtn ' + (hideBoardBadges ? 'active' : '')
-                      }
-                      onClick={() => setHideBoardBadges((prev) => !prev)}
-                      disabled={!selectedSkins.length}
-                      title="ซ่อนหรือแสดงเลขลำดับและปุ่มลบเพื่อดูภาพไร้ขอบล้วน"
-                    >
-                      {hideBoardBadges ? '👁 แสดงเลขลำดับ' : '👁 ดูไร้ขอบล้วน'}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="boardToolBtn dangerTextBtn"
-                      onClick={clearAllSelectedSkins}
-                      disabled={!selectedSkins.length}
-                    >
-                      <Trash2 size={13} /> ล้าง
-                    </button>
-
-                    {/* Column Slider Pill (1 to 20 columns, matching top-right of screenshot) */}
+                    {/* Column Slider Pill (1 to 20 columns) */}
                     <div
                       className="sortskinColSliderPill"
                       title="ปรับจำนวนรูปต่อแถว (1–20 รูป)"
@@ -2337,30 +2319,126 @@ export function App() {
                       >
                         +
                       </button>
-                      <b className="tabular">{layout.columns}</b>
+                      <b className="tabular">{layout.columns} รูป/แถว</b>
                     </div>
 
                     <button
                       type="button"
-                      className="primary boardDownloadBtn"
+                      className="secondary boardSecondaryDownloadBtn"
                       onClick={handleDownloadPng}
                       disabled={isExporting || !selectedSkins.length}
-                      title={`ดาวน์โหลดภาพขนาดรวม ${exportDimensionsInfo.totalWidth.toLocaleString()} × ${exportDimensionsInfo.totalHeight.toLocaleString()} px`}
+                      title={`ดาวน์โหลดเฉพาะตารางสกินขนาด ${exportDimensionsInfo.totalWidth.toLocaleString()} × ${exportDimensionsInfo.totalHeight.toLocaleString()} px`}
                     >
                       <Download size={14} />{' '}
                       {isExporting
                         ? 'กำลังสร้าง...'
-                        : `ดาวน์โหลดตาราง (${currentQualityOption.badge})`}
+                        : `โหลดเฉพาะตาราง (${currentQualityOption.badge})`}
                     </button>
 
                     <button
                       type="button"
-                      className="boardToolBtn scannerTriggerBtn"
+                      className="primary nextStepBannerCtaBtn"
                       onClick={() => setStep(3)}
-                      title="นำตารางสกินนี้ไปประกอบกับรูปโปรไฟล์เฟด + เติมรูป PNG + เติม Text ในเมนู 3–4"
+                      title="นำตารางสกินนี้ไปประกอบกับรูปโปรไฟล์เฟด + เติมรูป PNG + เติมข้อความสำเร็จรูป"
                     >
-                      <Sparkles size={13} /> ไปทำป้ายโปรไฟล์ (เมนู 3–4) →
+                      <Sparkles size={14} /> นำตารางไปทำป้ายโปรไฟล์ต่อ <ArrowRight size={14} />
                     </button>
+                  </div>
+                </div>
+
+                {/* Tier 2 Sub-Toolbar: Arrange Utilities & Canvas Backdrop Switcher */}
+                <div className="sortskinBoardSubToolbar">
+                  <div className="subToolbarLeft">
+                    <button
+                      type="button"
+                      className="boardToolBtn undoRedoBtn"
+                      onClick={handleUndo}
+                      disabled={!undoStack.length}
+                      title="ย้อนกลับการแก้ไขล่าสุด (Ctrl+Z)"
+                    >
+                      <Undo2 size={13} /> ย้อนกลับ
+                      {undoStack.length > 0 && (
+                        <small className="tabular">({undoStack.length})</small>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boardToolBtn undoRedoBtn iconOnlyBtn"
+                      onClick={handleRedo}
+                      disabled={!redoStack.length}
+                      title="ทำซ้ำรายการที่ย้อนกลับ (Ctrl+Y)"
+                    >
+                      <Redo2 size={13} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boardToolBtn"
+                      onClick={sortSkinsByHero}
+                      disabled={!selectedSkins.length}
+                      title="จัดเรียงตามชื่อฮีโร่ (A → Z)"
+                    >
+                      <Sparkles size={13} /> เรียงตามฮีโร่
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boardToolBtn"
+                      onClick={reverseSkinsOrder}
+                      disabled={!selectedSkins.length}
+                      title="สลับลำดับหน้า-หลัง"
+                    >
+                      ⇄ สลับลำดับ
+                    </button>
+
+                    <button
+                      type="button"
+                      className={
+                        'boardToolBtn ' + (hideBoardBadges ? 'active' : '')
+                      }
+                      onClick={() => setHideBoardBadges((prev) => !prev)}
+                      disabled={!selectedSkins.length}
+                      title="ซ่อนหรือแสดงเลขลำดับและปุ่มลบเพื่อดูภาพไร้ขอบล้วน"
+                    >
+                      {hideBoardBadges ? '👁 แสดงเลขลำดับ' : '👁 ดูไร้ขอบล้วน'}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boardToolBtn dangerTextBtn"
+                      onClick={clearAllSelectedSkins}
+                      disabled={!selectedSkins.length}
+                    >
+                      <Trash2 size={13} /> ล้างตาราง
+                    </button>
+                  </div>
+
+                  <div className="subToolbarRight">
+                    <div className="canvasBackdropToggleGroup">
+                      <span>พื้นหลังพรีวิว:</span>
+                      <button
+                        type="button"
+                        className={boardBackdrop === 'dark' ? 'active' : ''}
+                        onClick={() => setBoardBackdrop('dark')}
+                      >
+                        มืด
+                      </button>
+                      <button
+                        type="button"
+                        className={boardBackdrop === 'light' ? 'active' : ''}
+                        onClick={() => setBoardBackdrop('light')}
+                      >
+                        สว่าง
+                      </button>
+                      <button
+                        type="button"
+                        className={boardBackdrop === 'checker' ? 'active' : ''}
+                        onClick={() => setBoardBackdrop('checker')}
+                      >
+                        โปร่งใส
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2545,7 +2623,9 @@ export function App() {
                     </button>
                   </div>
                 ) : (
-                  <div className="sortskinLiveBoardCanvasWrap">
+                  <div
+                    className={`sortskinLiveBoardCanvasWrap backdrop-${boardBackdrop}`}
+                  >
                     <div
                       ref={previewRef}
                       className="sortskinPreviewGrid"
@@ -2641,10 +2721,35 @@ export function App() {
                       })}
                     </div>
 
-                    <div className="boardHintFooter">
-                      <span>
-                        💡 <b>ลากสลับตำแหน่งได้ลื่น ๆ บน iPad / มือถือ / คอม:</b> แตะลากที่รูปสกินเพื่อเลื่อนสลับตำแหน่งได้ทันที (หรือแตะ 2 รูปเพื่อสลับที่กัน) · เวลา<b>ดาวน์โหลด PNG</b> ระบบจะตัดตัวเลขและปุ่มออกให้อัตโนมัติ
-                      </span>
+                    <div className="boardBottomConversionBar">
+                      <div className="conversionBarSummary">
+                        <b>
+                          จัดตารางสกินพร้อมแล้ว{' '}
+                          <span className="tabular">{selectedSkins.length}</span> รูป
+                        </b>
+                        <small>
+                          ลากสลับตำแหน่งได้อิสระ · เวลาเซฟ PNG ระบบจะซ่อนตัวเลขและปุ่มลบให้อัตโนมัติ
+                        </small>
+                      </div>
+                      <div className="conversionBarButtons">
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={handleDownloadPng}
+                          disabled={isExporting}
+                        >
+                          <Download size={15} /> ดาวน์โหลดเฉพาะตารางสกิน (
+                          {currentQualityOption.badge})
+                        </button>
+                        <button
+                          type="button"
+                          className="primary nextStepBannerCtaBtn"
+                          onClick={() => setStep(3)}
+                        >
+                          <Sparkles size={15} /> นำตารางนี้ไปตัดป้ายโปรไฟล์สำเร็จรูปต่อ{' '}
+                          <ArrowRight size={15} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2659,59 +2764,77 @@ export function App() {
             - Step 4: Add Freely Draggable Text Overlays + Export Complete Poster with Bottom Skin Grid (IMG_0432.png)
            ============================================================ */}
         {(step === 3 || step === 4) && (
-          <ProfileBannerStudio
-            step={step}
-            setStep={setStep}
-            selectedSkins={selectedSkins}
-            heroesById={heroesById}
-            layout={layout}
-            setLayout={setLayout}
-            recommendedColsList={recommendedColsList}
-            exportQualityId={exportQualityId}
-            setExportQualityId={setExportQualityId}
-            exportQualityOptions={EXPORT_QUALITY_OPTIONS}
-            currentQualityOption={currentQualityOption}
-            sharpenExport={sharpenExport}
-            setSharpenExport={setSharpenExport}
-            notify={notify}
-            pastelPalette={PASTEL_PALETTE}
-          />
+          <Suspense
+            fallback={
+              <div className="panel studioLoadingFallback">
+                กำลังเปิดสตูดิโอตัดป้ายไอดี RoV สำเร็จรูป...
+              </div>
+            }
+          >
+            <ProfileBannerStudio
+              step={step}
+              setStep={setStep}
+              selectedSkins={selectedSkins}
+              heroesById={heroesById}
+              layout={layout}
+              setLayout={setLayout}
+              recommendedColsList={recommendedColsList}
+              exportQualityId={exportQualityId}
+              setExportQualityId={setExportQualityId}
+              exportQualityOptions={EXPORT_QUALITY_OPTIONS}
+              currentQualityOption={currentQualityOption}
+              sharpenExport={sharpenExport}
+              setSharpenExport={setSharpenExport}
+              notify={notify}
+              pastelPalette={PASTEL_PALETTE}
+            />
+          </Suspense>
         )}
       </section>
 
       {/* Movable Floating Image Scratchpad UI */}
-      <FloatingScratchpad
-        onCaptureCurrentBoard={handleCaptureBoardToScratchpad}
-        hasBoardSkins={selectedSkins.length > 0}
-        notify={notify}
-      />
+      <Suspense fallback={null}>
+        <FloatingScratchpad
+          onCaptureCurrentBoard={handleCaptureBoardToScratchpad}
+          hasBoardSkins={selectedSkins.length > 0}
+          notify={notify}
+        />
+      </Suspense>
 
       {/* RoV 5x3 & 5x2 Screenshot Skin Detector Modal */}
-      <SkinScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        heroes={heroes}
-        onImportMatchedSkins={handleImportScannedSkins}
-        notify={notify}
-      />
+      {isScannerOpen && (
+        <Suspense fallback={null}>
+          <SkinScannerModal
+            isOpen={isScannerOpen}
+            onClose={() => setIsScannerOpen(false)}
+            heroes={heroes}
+            onImportMatchedSkins={handleImportScannedSkins}
+            notify={notify}
+          />
+        </Suspense>
+      )}
 
       {/* Full Hero & Skin Database Manager Modal */}
-      <HeroSkinModal
-        isOpen={isManagerOpen}
-        onClose={() => setIsManagerOpen(false)}
-        heroes={heroes}
-        activeHeroId={activeHero?.id}
-        onSelectHeroId={setActiveHeroId}
-        onUpdateHero={handleUpdateHero}
-        onAddHero={handleAddHero}
-        onDeleteHero={handleDeleteHero}
-        onAddSkin={handleAddSkin}
-        onUpdateSkin={handleUpdateSkin}
-        onDeleteSkin={handleDeleteSkin}
-        onResetCatalog={handleResetCatalog}
-        onExportCatalog={handleExportCatalog}
-        onImportCatalog={handleImportCatalog}
-      />
+      {isManagerOpen && (
+        <Suspense fallback={null}>
+          <HeroSkinModal
+            isOpen={isManagerOpen}
+            onClose={() => setIsManagerOpen(false)}
+            heroes={heroes}
+            activeHeroId={activeHero?.id}
+            onSelectHeroId={setActiveHeroId}
+            onUpdateHero={handleUpdateHero}
+            onAddHero={handleAddHero}
+            onDeleteHero={handleDeleteHero}
+            onAddSkin={handleAddSkin}
+            onUpdateSkin={handleUpdateSkin}
+            onDeleteSkin={handleDeleteSkin}
+            onResetCatalog={handleResetCatalog}
+            onExportCatalog={handleExportCatalog}
+            onImportCatalog={handleImportCatalog}
+          />
+        </Suspense>
+      )}
 
       <footer>
         ♡ RoV Skin Collection Generator{' '}

@@ -229,6 +229,7 @@ export default function ProfileBannerStudio({
   const [customBottomGridSrc, setCustomBottomGridSrc] = useState('');
   const [showGridSkinNames, setShowGridSkinNames] = useState(false);
   const [isExportingBanner, setIsExportingBanner] = useState(false);
+  const [previewBackdrop, setPreviewBackdrop] = useState('dark');
 
   const bannerStageRef = useRef(null);
   const dragInteractionRef = useRef(null);
@@ -1907,6 +1908,34 @@ export default function ProfileBannerStudio({
             </div>
 
             <div className="studioPreviewActions">
+              <div
+                className="canvasBackdropToggleGroup"
+                title="สลับสีพื้นหลังรอบป้ายพรีวิวเพื่อให้กะระยะขอบเฟดและข้อความได้ง่ายขึ้น"
+              >
+                <span>พื้นหลังพรีวิว:</span>
+                <button
+                  type="button"
+                  className={previewBackdrop === 'dark' ? 'active' : ''}
+                  onClick={() => setPreviewBackdrop('dark')}
+                >
+                  มืด
+                </button>
+                <button
+                  type="button"
+                  className={previewBackdrop === 'light' ? 'active' : ''}
+                  onClick={() => setPreviewBackdrop('light')}
+                >
+                  สว่าง
+                </button>
+                <button
+                  type="button"
+                  className={previewBackdrop === 'checker' ? 'active' : ''}
+                  onClick={() => setPreviewBackdrop('checker')}
+                >
+                  ตารางโปร่งใส
+                </button>
+              </div>
+
               {fadedProfileDataUrl && (
                 <button
                   type="button"
@@ -1932,7 +1961,9 @@ export default function ProfileBannerStudio({
           </div>
 
           {/* Unified Composite Poster Frame */}
-          <div className="compositePosterScrollWrap">
+          <div
+            className={`compositePosterScrollWrap backdrop-${previewBackdrop}`}
+          >
             <div className="compositePosterSheet">
               {/* ==================================================
                   TOP SECTION: PROFILE BANNER STAGE
@@ -2154,6 +2185,8 @@ export default function ProfileBannerStudio({
                           <img
                             src={imgSrc}
                             alt={item.name || ''}
+                            loading="lazy"
+                            decoding="async"
                             referrerPolicy="no-referrer"
                             draggable={false}
                           />
