@@ -21,7 +21,10 @@ export default function SkinScannerModal({
   onImportMatchedSkins,
   notify,
 }) {
-  const [gridMode, setGridMode] = useState('auto'); // 'auto' | '5x3' | '5x2'
+  const [gridMode, setGridMode] = useState('auto'); // 'auto' | 'collage' | 'shop' | '5x3' | '5x2'
+  const [collageCols, setCollageCols] = useState(''); // '' = auto-detect cols
+  const [collageRows, setCollageRows] = useState(''); // '' = auto-detect rows
+  const [slotFilter, setSlotFilter] = useState('all'); // 'all' | 'matched' | 'skipped'
   const [matchThreshold, setMatchThreshold] = useState(64);
   const [appendMode, setAppendMode] = useState('append'); // 'append' | 'replace'
 
@@ -134,10 +137,17 @@ export default function SkinScannerModal({
     };
   }, [isOpen, heroes, totalCatalogSkins]);
 
-  // Run scan whenever uploadedFiles or gridMode changes (and catalogIndex is ready)
+  // Run scan whenever uploadedFiles, gridMode, or manual collage dimensions change (and catalogIndex is ready)
   useEffect(() => {
     if (!isOpen || isIndexing || uploadedFiles.length === 0) return;
     let cancelled = false;
+
+    const parsedCols = Number(collageCols) || 0;
+    const parsedRows = Number(collageRows) || 0;
+    const customGrid =
+      gridMode === 'collage' && (parsedCols > 0 || parsedRows > 0)
+        ? { cols: parsedCols, rows: parsedRows }
+        : null;
 
     const runBatchScan = async () => {
       setIsScanning(true);
@@ -146,7 +156,12 @@ export default function SkinScannerModal({
         currentFile: 1,
         totalFiles: uploadedFiles.length,
         slotIndex: 0,
-        totalSlots: gridMode === '5x2' || gridMode === 'shop' ? 10 : 15,
+        totalSlots:
+          customGrid?.cols && customGrid?.rows
+            ? customGrid.cols * customGrid.rows
+            : gridMode === '5x2' || gridMode === 'shop'
+              ? 10
+              : 15,
         fileName: uploadedFiles[0]?.name || '',
       });
       try {
@@ -157,6 +172,7 @@ export default function SkinScannerModal({
             file: currentFileObj,
             catalogIndex,
             gridMode,
+            customGrid,
             matchThreshold,
             onSlotProgress: ({ slotIndex, totalSlots }) => {
               if (cancelled) return;
@@ -203,7 +219,7 @@ export default function SkinScannerModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, isIndexing, uploadedFiles, gridMode, catalogIndex]);
+  }, [isOpen, isIndexing, uploadedFiles, gridMode, collageCols, collageRows, catalogIndex]);
 
   // Dynamically re-evaluate threshold on existing scanResults when slider moves
   const handleThresholdChange = (newThreshold) => {
@@ -390,10 +406,10 @@ export default function SkinScannerModal({
         <div className="modalHeader skinScannerHeader">
           <div>
             <span className="eyebrow">
-              AI BADGE-MASKED SKIN DETECTOR · 5×3 (15 ใบ) & 5×2 (10 ใบ)
+              AI BADGE-MASKED SKIN DETECTOR · ตารางสกินรวมไร้ขอบ (15×5 / 10×2 ฯลฯ) · ร้านค้า 5×2 · ฮีโร่ 5×3
             </span>
             <h3>
-              <Sparkles size={18} /> สแกนรูปแคปหน้าจอ RoV & แมตช์สกินเข้าพรีวิว
+              <Sparkles size={18} /> สแกนรูปแคปหน้าจอ / ตารางสกิน RoV & แมตช์เข้าพรีวิว
             </h3>
           </div>
 
@@ -434,9 +450,10 @@ export default function SkinScannerModal({
             <div className="scannerModePills">
               {[
                 { id: 'auto', label: 'อัตโนมัติ (ตรวจจับเอง)' },
+                { id: 'collage', label: 'ตารางสกินรวม (ไร้ขอบ)' },
                 { id: 'shop', label: 'ร้านค้าสกิน (5×2)' },
-                { id: '5x3', label: 'หน้าฮีโร่ 5×3 (15 ใบ)' },
-                { id: '5x2', label: 'หน้าฮีโร่ 5×2 (10 ใบ)' },
+                { id: '5x3', label: 'หน้าฮีโร่ 5×3' },
+                { id: '5x2', label: 'หน้าฮีโร่ 5×2' },
               ].map((m) => (
                 <button
                   key={m.id}
@@ -450,6 +467,43 @@ export default function SkinScannerModal({
                 </button>
               ))}
             </div>
+
+            {gridMode === 'collage' && (
+              <div
+                className="scannerCollageSizeGroup"
+                title="ปล่อยว่างไว้เพื่อให้ระบบตรวจจับจำนวนคอลัมน์ × แถวอัตโนมัติ หรือระบุเองได้ (เช่น 15 × 5)"
+              >
+                <input
+                  type="number"
+                  min={1}
+                  max={25}
+                  placeholder="คอลัมน์ (ออโต้)"
+                  value={collageCols}
+                  onChange={(e) => setCollageCols(e.target.value)}
+                />
+                <span>×</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  placeholder="แถว (ออโต้)"
+                  value={collageRows}
+                  onChange={(e) => setCollageRows(e.target.value)}
+                />
+                {(collageCols || collageRows) && (
+                  <button
+                    type="button"
+                    className="scannerResetGridBtn"
+                    onClick={() => {
+                      setCollageCols('');
+                      setCollageRows('');
+                    }}
+                  >
+                    ออโต้
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="scannerControlGroup">
@@ -574,11 +628,11 @@ export default function SkinScannerModal({
                 <ImageIcon size={34} />
               </div>
               <h4>
-                คลิกเพื่อเลือกรูปแคปหน้าจอ RoV หรือลากไฟล์มาวางที่นี่ (กด Ctrl+V เพื่อวางได้)
+                คลิกเพื่อเลือกรูปแคปหน้าจอ / ตารางสกิน RoV หรือลากไฟล์มาวางที่นี่ (กด Ctrl+V ได้)
               </h4>
               <p>
-                รองรับทั้ง <b>หน้าร้านค้า → สกิน (5×2 มีปุ่ม “มีแล้ว”)</b> และ{' '}
-                <b>หน้ารายชื่อฮีโร่/สกินแบบ 5×3 (15 ใบ รวมแถวล่างครึ่งใบ) / 5×2 (10 ใบ)</b>
+                รองรับทั้ง <b>ภาพตารางสกินรวมแบบไร้ขอบ (เช่น 15×5, 10×2 ฯลฯ ตรวจจับคอลัมน์×แถวอัตโนมัติ)</b>,{' '}
+                <b>หน้าร้านค้า → สกิน (5×2)</b> และ <b>หน้ารายชื่อฮีโร่/สกิน (5×3 / 5×2)</b>
               </p>
               <div className="scannerZoneDiagram">
                 <span className="zoneTag ignored">
@@ -654,6 +708,45 @@ export default function SkinScannerModal({
                     </div>
 
                     <div className="scannerPageHeaderActions">
+                      {page.slots.length > 15 && (
+                        <div className="scannerPageFilterPills">
+                          <button
+                            type="button"
+                            className={slotFilter === 'all' ? 'active' : ''}
+                            onClick={() => setSlotFilter('all')}
+                          >
+                            ทั้งหมด ({page.slots.length})
+                          </button>
+                          <button
+                            type="button"
+                            className={slotFilter === 'matched' ? 'active' : ''}
+                            onClick={() => setSlotFilter('matched')}
+                          >
+                            แมตช์ ({pageMatchedCount})
+                          </button>
+                          <button
+                            type="button"
+                            className={slotFilter === 'skipped' ? 'active' : ''}
+                            onClick={() => setSlotFilter('skipped')}
+                          >
+                            ข้าม ({pageSkippedCount})
+                          </button>
+                        </div>
+                      )}
+                      {page.layoutType === 'collage' && gridMode !== 'collage' && (
+                        <button
+                          type="button"
+                          className="scannerMiniTextBtn"
+                          onClick={() => {
+                            setCollageCols(String(page.detectedCols || ''));
+                            setCollageRows(String(page.detectedRows || ''));
+                            setGridMode('collage');
+                          }}
+                          title="ปรับจำนวนคอลัมน์ × แถวเองหากสแกนตารางไม่ตรง"
+                        >
+                          ปรับ {page.detectedCols}×{page.detectedRows}
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="scannerMiniTextBtn"
@@ -693,9 +786,17 @@ export default function SkinScannerModal({
                     </div>
                   </div>
 
-                  {/* 5-Column Review Grid matching the 5x3 / 5x2 layout in RoV */}
+                  {/* Review Grid */}
                   <div className="scannerReviewGrid">
-                    {page.slots.map((slot) => {
+                    {page.slots
+                      .filter((slot) => {
+                        if (page.slots.length <= 15 || slotFilter === 'all')
+                          return true;
+                        const inc =
+                          slot.included && Boolean(slot.selectedMatch);
+                        return slotFilter === 'matched' ? inc : !inc;
+                      })
+                      .map((slot) => {
                       const isIncluded =
                         slot.included && Boolean(slot.selectedMatch);
                       const match = slot.selectedMatch;

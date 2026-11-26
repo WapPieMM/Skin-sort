@@ -54,22 +54,250 @@ export function loadImageElement(src, timeoutMs = 6500) {
 }
 
 /**
- * Automatically detects the 5 column spans and 2 or 3 row spans of RoV cards in a screenshot.
- * Supports:
- * 1. RoV Shop -> Skins ("ร้านค้า -> สกิน", 5x2 = 10 cards with "มีแล้ว" button bar at bottom, like 7A31B370.jpeg)
- * 2. RoV Hero / Skin List ("รายชื่อฮีโร่", 5x3 = 15 cards with partial Row 3, or 5x2 = 10 cards, like IMG_0442)
- * Works across iPad (4:3, 2360x1640), cropped screenshots (2360x1250), and mobile widescreen (16:9 / 19.5:9 / 20:9).
+ * Detects a seamless (zero-gap, edge-to-edge) skin collage grid of ANY (cols x rows),
+ * such as 15x5 (75 skins like image_b3de0356.png), 10x2 (20 skins like IMG_0432.png), 12x4, etc.
+ *
+ * Uses 1px + 2px cross-seam RGB discontinuity energy at candidate grid divisions combined with
+ * RoV portrait card aspect ratio constraints (tileH / tileW in 1.12 .. 1.92) and quantile peak
+ * consistency so sub-harmonics (e.g. 5 instead of 15) and multiples (e.g. 10 instead of 5) are rejected.
+ */
+function detectSeamlessCollageGrid(data, sw, sh, W, H, customGrid = null) {
+  const getRGB = (x, y) => {
+    const cx = Math.max(0, Math.min(sw - 1, Math.round(x)));
+    const cy = Math.max(0, Math.min(sh - 1, Math.round(y)));
+    const i = (cy * sw + cx) * 4;
+    return [data[i], data[i + 1], data[i + 2]];
+  };
+
+  const buildBoxesForGrid = (cols, rows, confidence = 100) => {
+    const boxes = [];
+    let idx = 0;
+    for (let r = 0; r < rows; r++) {
+      const y0 = Math.round((r * H) / rows);
+      const y1 = Math.round(((r + 1) * H) / rows);
+      const cellH = Math.max(1, y1 - y0);
+
+      for (let c = 0; c < cols; c++) {
+        const x0 = Math.round((c * W) / cols);
+        const x1 = Math.round(((c + 1) * W) / cols);
+        const cellW = Math.max(1, x1 - x0);
+
+        // Check if this cell (especially trailing cells on the last row) is blank/uniform background
+        if (r === rows - 1 && cols * rows > 1) {
+          const sx0 = Math.round((c * sw) / cols);
+          const sx1 = Math.round(((c + 1) * sw) / cols);
+          const sy0 = Math.round((r * sh) / rows);
+          const sy1 = Math.round(((r + 1) * sh) / rows);
+          const padX = Math.max(2, Math.round((sx1 - sx0) * 0.15));
+          const padY = Math.max(2, Math.round((sy1 - sy0) * 0.15));
+          let sumL = 0;
+          let sumL2 = 0;
+          let cnt = 0;
+          for (let py = sy0 + padY; py < sy1 - padY; py += 3) {
+            for (let px = sx0 + padX; px < sx1 - padX; px += 3) {
+              const [rr, gg, bb] = getRGB(px, py);
+              const lum = 0.299 * rr + 0.587 * gg + 0.114 * bb;
+              sumL += lum;
+              sumL2 += lum * lum;
+              cnt++;
+            }
+          }
+          if (cnt > 4) {
+            const mean = sumL / cnt;
+            const stdDev = Math.sqrt(Math.max(0, sumL2 / cnt - mean * mean));
+            if (stdDev < 7.5) {
+              continue; // Skip blank trailing cell
+            }
+          }
+        }
+
+        boxes.push({
+          index: idx++,
+          row: r,
+          col: c,
+          x: x0,
+          y: y0,
+          width: cellW,
+          height: cellH,
+          portraitHeight: cellH,
+          detectedCols: cols,
+          detectedRows: rows,
+          layoutType: 'collage',
+        });
+      }
+    }
+    return {
+      cols,
+      rows,
+      confidence,
+      boxes,
+    };
+  };
+
+  // If user manually specified custom cols & rows, build directly
+  const manualCols = Number(customGrid?.cols) || 0;
+  const manualRows = Number(customGrid?.rows) || 0;
+  if (manualCols >= 1 && manualCols <= 25 && manualRows >= 1 && manualRows <= 20) {
+    return buildBoxesForGrid(manualCols, manualRows, 100);
+  }
+
+  // Compute 1px + 2px vertical & horizontal seam discontinuity profiles
+  const vSeam = new Float32Array(sw);
+  for (let x = 1; x < sw - 1; x++) {
+    let sum = 0;
+    let cnt = 0;
+    for (let y = 0; y < sh; y += 2) {
+      const iPrev = (y * sw + (x - 1)) * 4;
+      const iCur = (y * sw + x) * 4;
+      const iNext = (y * sw + (x + 1)) * 4;
+      const d1 =
+        Math.abs(data[iCur] - data[iPrev]) +
+        Math.abs(data[iCur + 1] - data[iPrev + 1]) +
+        Math.abs(data[iCur + 2] - data[iPrev + 2]);
+      const d2 =
+        (Math.abs(data[iNext] - data[iPrev]) +
+          Math.abs(data[iNext + 1] - data[iPrev + 1]) +
+          Math.abs(data[iNext + 2] - data[iPrev + 2])) *
+        0.82;
+      sum += d1 > d2 ? d1 : d2;
+      cnt++;
+    }
+    vSeam[x] = cnt > 0 ? sum / cnt : 0;
+  }
+
+  const hSeam = new Float32Array(sh);
+  for (let y = 1; y < sh - 1; y++) {
+    let sum = 0;
+    let cnt = 0;
+    for (let x = 0; x < sw; x += 2) {
+      const iPrev = ((y - 1) * sw + x) * 4;
+      const iCur = (y * sw + x) * 4;
+      const iNext = ((y + 1) * sw + x) * 4;
+      const d1 =
+        Math.abs(data[iCur] - data[iPrev]) +
+        Math.abs(data[iCur + 1] - data[iPrev + 1]) +
+        Math.abs(data[iCur + 2] - data[iPrev + 2]);
+      const d2 =
+        (Math.abs(data[iNext] - data[iPrev]) +
+          Math.abs(data[iNext + 1] - data[iPrev + 1]) +
+          Math.abs(data[iNext + 2] - data[iPrev + 2])) *
+        0.82;
+      sum += d1 > d2 ? d1 : d2;
+      cnt++;
+    }
+    hSeam[y] = cnt > 0 ? sum / cnt : 0;
+  }
+
+  const scoreDivisions = (seamArr, len, minDiv, maxDiv) => {
+    const out = new Map();
+    for (let div = minDiv; div <= maxDiv; div++) {
+      if (div === 1) {
+        out.set(1, { mean: 18, q25: 18, strongRatio: 1 });
+        continue;
+      }
+      const excesses = [];
+      for (let k = 1; k < div; k++) {
+        const pos = Math.round((k * len) / div);
+        let best = 0;
+        for (let d = -2; d <= 2; d++) {
+          const p = Math.max(1, Math.min(len - 2, pos + d));
+          if (seamArr[p] > best) best = seamArr[p];
+        }
+        let bg = 0;
+        let bgc = 0;
+        for (const d of [-7, -6, -5, -4, 4, 5, 6, 7]) {
+          const p = Math.max(1, Math.min(len - 2, pos + d));
+          bg += seamArr[p];
+          bgc++;
+        }
+        excesses.push(Math.max(0, best - (bgc > 0 ? bg / bgc : 0)));
+      }
+      excesses.sort((a, b) => a - b);
+      const mean =
+        excesses.reduce((acc, v) => acc + v, 0) / Math.max(1, excesses.length);
+      const q25 = excesses[Math.floor(excesses.length * 0.25)] || 0;
+      const strongRatio =
+        excesses.filter((v) => v >= 12).length / Math.max(1, excesses.length);
+      out.set(div, { mean, q25, strongRatio });
+    }
+    return out;
+  };
+
+  const colStats = scoreDivisions(vSeam, sw, 2, 22);
+  const rowStats = scoreDivisions(hSeam, sh, 1, 15);
+
+  let best = null;
+  for (let cols = 2; cols <= 22; cols++) {
+    for (let rows = 1; rows <= 15; rows++) {
+      // If user supplied only one dimension, lock that dimension
+      if (manualCols > 0 && cols !== manualCols) continue;
+      if (manualRows > 0 && rows !== manualRows) continue;
+
+      const tileW = W / cols;
+      const tileH = H / rows;
+      const aspect = tileH / Math.max(1, tileW);
+      // Every RoV / SortSkin seamless grid card has portrait aspect ~1.35..1.68 (allow 1.12..1.92)
+      if (aspect < 1.12 || aspect > 1.92) continue;
+
+      const cs = colStats.get(cols);
+      const rs = rowStats.get(rows);
+      if (!cs || !rs) continue;
+
+      const colScore = cs.q25 * 0.65 + cs.mean * 0.35;
+      const rowScore =
+        rows === 1 ? colScore * 0.55 : rs.q25 * 0.65 + rs.mean * 0.35;
+
+      // Gentle preference around standard RoV skin portrait ratio (~1.46)
+      const aspectBonus = 1 - Math.min(0.28, Math.abs(aspect - 1.46) * 0.38);
+      const combined =
+        (colScore + rowScore) *
+        aspectBonus *
+        (0.45 + 0.55 * cs.strongRatio) *
+        (0.45 + 0.55 * rs.strongRatio);
+
+      if (!best || combined > best.combined) {
+        best = {
+          cols,
+          rows,
+          colScore,
+          rowScore,
+          combined,
+          aspect,
+        };
+      }
+    }
+  }
+
+  if (!best) {
+    // Fallback estimation from image aspect ratio assuming standard ~1.45 portrait card
+    const fallbackCols = manualCols > 0 ? manualCols : Math.max(2, Math.min(20, Math.round((W / Math.max(1, H)) * 4.5)));
+    const fallbackRows = manualRows > 0 ? manualRows : Math.max(1, Math.min(12, Math.round((H * fallbackCols) / Math.max(1, W * 1.45))));
+    return buildBoxesForGrid(fallbackCols, fallbackRows, 0);
+  }
+
+  const result = buildBoxesForGrid(best.cols, best.rows, best.combined);
+  result.colScore = best.colScore;
+  result.rowScore = best.rowScore;
+  return result;
+}
+
+/**
+ * Automatically detects RoV card bounding boxes across ALL supported screenshot formats:
+ * 1. Seamless Skin Collage Grid (ANY cols × rows, e.g. 15×5 = 75 cards like image_b3de0356.png, 10×2 = 20 cards like IMG_0432.png)
+ * 2. RoV Shop -> Skins ("ร้านค้า -> สกิน", 5×2 = 10 cards with "มีแล้ว" button bar at bottom, like 7A31B370.jpeg)
+ * 3. RoV Hero / Skin List ("รายชื่อฮีโร่", 5×3 = 15 cards with partial Row 3, or 5×2 = 10 cards, like IMG_0442)
  *
  * @param {HTMLImageElement} img
- * @param {'auto' | 'shop' | '5x3' | '5x2'} gridMode
- * @returns {Array<{ index: number, row: number, col: number, x: number, y: number, width: number, height: number, portraitHeight: number, layoutType: 'shop' | 'herolist' }>}
+ * @param {'auto' | 'collage' | 'shop' | '5x3' | '5x2'} gridMode
+ * @param {{ cols?: number, rows?: number } | null} customGrid
+ * @returns {Array<{ index: number, row: number, col: number, x: number, y: number, width: number, height: number, portraitHeight: number, detectedCols: number, detectedRows: number, layoutType: 'collage' | 'shop' | 'herolist' }>}
  */
-export function detectRoVCardBoxes(img, gridMode = 'auto') {
+export function detectRoVCardBoxes(img, gridMode = 'auto', customGrid = null) {
   const W = img.naturalWidth || img.width;
   const H = img.naturalHeight || img.height;
 
-  // Draw to a working analysis canvas (max width 1180 for fast pixel scanning)
-  const scale = Math.min(1, 1180 / Math.max(1, W));
+  // Draw to a working analysis canvas (max width 1440 keeps 15–20 col seams sharp while remaining fast)
+  const scale = Math.min(1, 1440 / Math.max(1, W));
   const sw = Math.max(100, Math.round(W * scale));
   const sh = Math.max(100, Math.round(H * scale));
 
@@ -80,12 +308,33 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
   ctx.drawImage(img, 0, 0, sw, sh);
   const { data } = ctx.getImageData(0, 0, sw, sh);
 
+  // Explicit Seamless Collage mode
+  if (gridMode === 'collage') {
+    const collage = detectSeamlessCollageGrid(data, sw, sh, W, H, customGrid);
+    return collage.boxes;
+  }
+
   const getRGB = (x, y) => {
     const cx = Math.max(0, Math.min(sw - 1, Math.round(x)));
     const cy = Math.max(0, Math.min(sh - 1, Math.round(y)));
     const i = (cy * sw + cx) * 4;
     return [data[i], data[i + 1], data[i + 2]];
   };
+
+  // Measure whether the rightmost strip (x = 98.8%) is a uniform in-game background margin
+  // (In-game RoV UI has a smooth dark blue margin; seamless collages have busy skin artwork all the way to the edge)
+  let marginJumpSum = 0;
+  let marginJumpCnt = 0;
+  const marginX = Math.round(sw * 0.988);
+  for (let y = Math.round(sh * 0.15); y < Math.round(sh * 0.85); y += 4) {
+    const [r1, g1, b1] = getRGB(marginX, y);
+    const [r2, g2, b2] = getRGB(marginX, y + 4);
+    marginJumpSum +=
+      Math.abs(r2 - r1) + Math.abs(g2 - g1) + Math.abs(b2 - b1);
+    marginJumpCnt++;
+  }
+  const rightMarginBusyness =
+    marginJumpCnt > 0 ? marginJumpSum / marginJumpCnt : 0;
 
   // 1. Scan horizontal profile in y = 22% .. 36% of height for x in 18.2% .. 98.5% of width,
   // comparing each pixel (x, y) against the clean right-margin background at the SAME y (x = 98.8% of width).
@@ -132,40 +381,56 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
   };
 
   let colSegs = null;
-  for (const thresh of [46, 40, 52, 35, 60, 68]) {
-    const candidate = findSegments(
-      xDiff,
-      xStartSearch,
-      xEndSearch,
-      thresh,
-      Math.round(sw * 0.08)
-    );
-    if (candidate.length === 5) {
-      // Columns 2..5 are surrounded by clean gutters; use their median width & uniform grid stride
-      // to regularize all 5 columns so left-menu glow or dark jacket edges never shift Column 1.
-      const widths25 = candidate
-        .slice(1)
-        .map(([a, b]) => b - a + 1)
-        .sort((a, b) => a - b);
-      const medW = widths25[1];
-      const maxDev25 = Math.max(
-        ...widths25.map((w) => Math.abs(w - medW) / Math.max(1, medW))
+  if (rightMarginBusyness < 26 || gridMode !== 'auto') {
+    for (const thresh of [46, 40, 52, 35, 60, 68]) {
+      const candidate = findSegments(
+        xDiff,
+        xStartSearch,
+        xEndSearch,
+        thresh,
+        Math.round(sw * 0.08)
       );
-      if (maxDev25 < 0.09) {
-        // Compute uniform stride from Columns 2..5 right edges (which are immune to left-menu glow)
-        const stride = (candidate[4][1] - candidate[1][1]) / 3;
-        const col4Right = candidate[4][1];
-        colSegs = [0, 1, 2, 3, 4].map((c) => {
-          const right = Math.round(col4Right - (4 - c) * stride);
-          const left = Math.round(right - medW + 1);
-          return [left, right];
-        });
-        break;
+      if (candidate.length === 5) {
+        // Columns 2..5 are surrounded by clean gutters; use their median width & uniform grid stride
+        // to regularize all 5 columns so left-menu glow or dark jacket edges never shift Column 1.
+        const widths25 = candidate
+          .slice(1)
+          .map(([a, b]) => b - a + 1)
+          .sort((a, b) => a - b);
+        const medW = widths25[1];
+        const maxDev25 = Math.max(
+          ...widths25.map((w) => Math.abs(w - medW) / Math.max(1, medW))
+        );
+        if (maxDev25 < 0.09) {
+          // Compute uniform stride from Columns 2..5 right edges (which are immune to left-menu glow)
+          const stride = (candidate[4][1] - candidate[1][1]) / 3;
+          const col4Right = candidate[4][1];
+          colSegs = [0, 1, 2, 3, 4].map((c) => {
+            const right = Math.round(col4Right - (4 - c) * stride);
+            const left = Math.round(right - medW + 1);
+            return [left, right];
+          });
+          break;
+        }
       }
     }
   }
 
-  // Fallback column coordinates if custom aspect ratio
+  // In Auto mode: if 5 in-game guttered columns were NOT found cleanly (or right edge is artwork, not dark UI margin),
+  // check if this image is a Seamless Skin Collage Grid (like 15x5 image_b3de0356.png or 10x2 IMG_0432.png)!
+  if (gridMode === 'auto' && !colSegs) {
+    const collage = detectSeamlessCollageGrid(data, sw, sh, W, H, customGrid);
+    const strongCollage =
+      collage.boxes.length >= 2 &&
+      collage.confidence >= 28 &&
+      (collage.colScore || 0) >= 10 &&
+      (collage.rows === 1 || (collage.rowScore || 0) >= 14);
+    if (strongCollage || rightMarginBusyness >= 24) {
+      return collage.boxes;
+    }
+  }
+
+  // Fallback column coordinates if custom aspect ratio in-game screenshot
   if (!colSegs) {
     const colFractions =
       gridMode === 'shop'
@@ -329,6 +594,8 @@ export function detectRoVCardBoxes(img, gridMode = 'auto') {
         height: visibleHeight,
         portraitHeight,
         shopPortraitHeight,
+        detectedCols: colSegs.length,
+        detectedRows: rowSegs.length,
         layoutType: isShopScreen ? 'shop' : 'herolist',
       });
     }
@@ -379,13 +646,54 @@ function extractNormalizedPatch(
 }
 
 /**
+ * Stage 1 ultra-fast coarse color similarity (stride-2, zero heap allocation).
+ * Used to pre-filter large catalogs (500..2,000+ skins) down to top 45 candidates
+ * before running the exact outlier-trimmed & gradient-correlated Stage 2 scorer.
+ */
+function fastCoarseSimilarity(cardPatch, catPatch) {
+  const maxRow = Math.min(
+    Math.floor(DESC_H * 0.64),
+    cardPatch.visibleRows - 2,
+    catPatch.visibleRows - 2
+  );
+  const minRow = Math.floor(DESC_H * 0.08);
+  const minCol = Math.floor(DESC_W * 0.08);
+  const maxCol = Math.floor(DESC_W * 0.92);
+  if (maxRow <= minRow + 4) return 0;
+
+  const cData = cardPatch.data;
+  const kData = catPatch.data;
+  let diffSum = 0;
+  let cnt = 0;
+
+  for (let y = minRow; y < maxRow; y += 2) {
+    const gy = y / DESC_H;
+    for (let x = minCol; x < maxCol; x += 2) {
+      const gx = x / DESC_W;
+      if (gy < 0.27 && gx > 0.36) continue;
+      if (gy < 0.16 && gx > 0.25) continue;
+
+      const idx = (y * DESC_W + x) * 4;
+      diffSum +=
+        Math.abs(cData[idx] - kData[idx]) +
+        Math.abs(cData[idx + 1] - kData[idx + 1]) +
+        Math.abs(cData[idx + 2] - kData[idx + 2]);
+      cnt++;
+    }
+  }
+
+  if (cnt === 0) return 0;
+  return 255 - diffSum / (cnt * 3);
+}
+
+/**
  * Computes an occlusion-resistant similarity score (0..100) between a screenshot card patch
  * and a catalog skin patch.
  *
  * Key properties:
  * 1. Masks out Top-Right Badge Zone (y: 0..26%, x: 38..100%) where collab/tier badges ("Attack on Titan",
- *    "Jujutsu Kaisen", "Limited", "Mythical") appear in catalog cards.
- * 2. Masks out Bottom Text/Mastery Zone (y: 64..100%) where skin names or hero mastery bars appear.
+ *    "Jujutsu Kaisen", "Limited", "Mythical", "WaVe", "Divine", etc.) appear.
+ * 2. Masks out Bottom Text/Icon/Mastery Zone (y: 64..100%) where recall/kill icons, skin names, or mastery bars appear.
  * 3. Uses Outlier-Trimmed Pixel Distance (drops the worst 22% of pixels in the core zone) so even
  *    oversized badges, buff arrows, or lane icons don't hurt the match score.
  * 4. Combines RGB color closeness + local gradient (edge) correlation.
@@ -670,13 +978,15 @@ export function warmUpCatalogSkinIndexInBackground(heroes) {
 }
 
 /**
- * Scans a single RoV screenshot (5x3 or 5x2) and matches each card slot against the catalog index.
+ * Scans a single RoV image (In-Game 5x3 / 5x2 / Shop OR Seamless Collage Grid like 15x5, 10x2)
+ * and matches each card slot against the catalog index using 2-stage coarse-to-fine matching.
  */
 export async function scanScreenshotForSkins({
   file,
   catalogIndex,
   gridMode = 'auto',
-  matchThreshold = 66,
+  customGrid = null,
+  matchThreshold = 64,
   onSlotProgress,
 }) {
   const dataUrl = await new Promise((resolve, reject) => {
@@ -687,7 +997,7 @@ export async function scanScreenshotForSkins({
   });
 
   const img = await loadImageElement(dataUrl);
-  const boxes = detectRoVCardBoxes(img, gridMode);
+  const boxes = detectRoVCardBoxes(img, gridMode, customGrid);
 
   const workCanvas = document.createElement('canvas');
   workCanvas.width = DESC_W;
@@ -702,10 +1012,8 @@ export async function scanScreenshotForSkins({
   thumbCanvas.height = thumbH;
   const thumbCtx = thumbCanvas.getContext('2d');
 
-  // Alignment micro-offsets & aspect ratios to test:
-  // Covers both Hero List portraits (aspect ~1.347), 306x427 catalog cards (aspect ~1.395),
-  // and Shop Skin portraits above the "มีแล้ว" bar (aspect ~1.48..1.575).
-  const offsets = [
+  // Alignment offsets for in-game screenshots (Hero List & Shop)
+  const gameOffsets = [
     { dx: 0, dy: 0.018, scale: 1.0, aspectMul: 1.0 },
     { dx: 0, dy: 0, scale: 1.0, aspectMul: 1.0 },
     { dx: 0, dy: 0, scale: 1.0, aspectMul: 1.036 },
@@ -716,19 +1024,39 @@ export async function scanScreenshotForSkins({
     { dx: 0, dy: 0.035, scale: 0.98, aspectMul: 1.0 },
   ];
 
-  const isShopLayout = boxes[0]?.layoutType === 'shop';
+  // Alignment offsets for Seamless Collage tiles (edge-inset to avoid neighbor bleed, covers 1:1 & cover-cropped tiles)
+  const collageOffsets = [
+    { insetX: 0.012, insetY: 0.01, dy: 0, scale: 1.0, aspectMul: 1.0 },
+    { insetX: 0.02, insetY: 0.02, dy: 0, scale: 0.96, aspectMul: 1.0 },
+    { insetX: 0.012, insetY: 0.01, dy: 0.025, scale: 0.97, aspectMul: 1.0 },
+    { insetX: 0.012, insetY: 0.01, dy: -0.02, scale: 0.97, aspectMul: 1.0 },
+    { insetX: 0.012, insetY: 0.01, dy: 0, scale: 1.0, aspectMul: 0.92 },
+    { insetX: 0.012, insetY: 0.01, dy: 0, scale: 1.0, aspectMul: 1.08 },
+    { insetX: 0.035, insetY: 0.015, dy: 0.01, scale: 0.93, aspectMul: 0.95 },
+  ];
+
+  const layoutType = boxes[0]?.layoutType || 'herolist';
+  const isCollageLayout = layoutType === 'collage';
+  const isShopLayout = layoutType === 'shop';
+  const detectedCols = boxes[0]?.detectedCols || 5;
+  const detectedRows =
+    boxes[0]?.detectedRows || (boxes.length > 10 ? 3 : 2);
+
   const slots = [];
+  const FINE_CANDIDATE_LIMIT = 45;
 
   for (let i = 0; i < boxes.length; i++) {
     const box = boxes[i];
 
-    // Create thumbnail of the detected card slot (excluding bottom "มีแล้ว" or mastery bar)
+    // Create thumbnail of the detected card slot
     thumbCtx.fillStyle = '#191838';
     thumbCtx.fillRect(0, 0, thumbW, thumbH);
     const displayPortH =
-      box.layoutType === 'shop'
-        ? box.shopPortraitHeight || box.portraitHeight
-        : box.portraitHeight;
+      box.layoutType === 'collage'
+        ? box.height
+        : box.layoutType === 'shop'
+          ? box.shopPortraitHeight || box.portraitHeight
+          : box.portraitHeight;
     const visRatio = Math.min(1, box.height / Math.max(1, displayPortH));
     thumbCtx.drawImage(
       img,
@@ -741,21 +1069,56 @@ export async function scanScreenshotForSkins({
       thumbW,
       Math.round(thumbH * visRatio)
     );
-    const cropThumbUrl = thumbCanvas.toDataURL('image/jpeg', 0.85);
+    const cropThumbUrl = thumbCanvas.toDataURL('image/jpeg', 0.82);
 
     // Extract patches across alignment offsets for this card
-    const cardPatches = offsets.map((off) => {
-      const targetPortH = box.portraitHeight * (off.aspectMul || 1.0);
-      const sx = box.x + box.width * off.dx + (box.width * (1 - off.scale)) / 2;
-      const sy = box.y + targetPortH * off.dy;
-      const sw = box.width * off.scale;
-      const sh = targetPortH * off.scale;
-      const maxVisH = Math.max(10, box.y + box.height - sy);
-      return extractNormalizedPatch(workCtx, img, sx, sy, sw, sh, maxVisH);
-    });
+    const cardPatches = isCollageLayout
+      ? collageOffsets.map((off) => {
+          const padX = box.width * (off.insetX || 0);
+          const padY = box.height * (off.insetY || 0);
+          const innerW = Math.max(8, box.width - padX * 2);
+          const innerH = Math.max(8, box.height - padY * 2);
+          const sw = innerW * off.scale;
+          const targetH = Math.min(innerH, innerH * off.scale * (off.aspectMul || 1.0));
+          const sx = box.x + padX + (innerW - sw) / 2;
+          const rawSy = box.y + padY + (innerH - targetH) / 2 + innerH * off.dy;
+          const sy = Math.max(
+            box.y + padY,
+            Math.min(box.y + box.height - padY - targetH, rawSy)
+          );
+          return extractNormalizedPatch(workCtx, img, sx, sy, sw, targetH, targetH);
+        })
+      : gameOffsets.map((off) => {
+          const targetPortH = box.portraitHeight * (off.aspectMul || 1.0);
+          const sx =
+            box.x + box.width * off.dx + (box.width * (1 - off.scale)) / 2;
+          const sy = box.y + targetPortH * off.dy;
+          const sw = box.width * off.scale;
+          const sh = targetPortH * off.scale;
+          const maxVisH = Math.max(10, box.y + box.height - sy);
+          return extractNormalizedPatch(workCtx, img, sx, sy, sw, sh, maxVisH);
+        });
 
-    // Score every catalog skin against this card
-    const scored = catalogIndex.map((catItem) => {
+    // Stage 1: Ultra-fast coarse pre-filter if catalog is large (> 60 skins)
+    let candidatesToRefine = catalogIndex;
+    if (catalogIndex.length > FINE_CANDIDATE_LIMIT + 15) {
+      const coarseScored = new Array(catalogIndex.length);
+      const p0 = cardPatches[0];
+      const p1 = cardPatches[1] || p0;
+      for (let c = 0; c < catalogIndex.length; c++) {
+        const catPatch = catalogIndex[c].patch;
+        const s0 = fastCoarseSimilarity(p0, catPatch);
+        const s1 = p1 === p0 ? s0 : fastCoarseSimilarity(p1, catPatch);
+        coarseScored[c] = { item: catalogIndex[c], coarse: s0 > s1 ? s0 : s1 };
+      }
+      coarseScored.sort((a, b) => b.coarse - a.coarse);
+      candidatesToRefine = coarseScored
+        .slice(0, FINE_CANDIDATE_LIMIT)
+        .map((entry) => entry.item);
+    }
+
+    // Stage 2: Exact badge-masked & outlier-trimmed gradient-correlated match across all offsets
+    const scored = candidatesToRefine.map((catItem) => {
       let bestScore = 0;
       for (let k = 0; k < cardPatches.length; k++) {
         const s = computeBadgeMaskedSimilarity(cardPatches[k], catItem.patch);
@@ -783,7 +1146,7 @@ export async function scanScreenshotForSkins({
       slotNumber: box.index + 1,
       row: box.row + 1,
       col: box.col + 1,
-      isPartialRow: box.height < box.portraitHeight * 0.9,
+      isPartialRow: !isCollageLayout && box.height < box.portraitHeight * 0.9,
       cropThumbUrl,
       // Auto-skip if no catalog skin meets the confidence threshold
       included: isMatched,
@@ -796,23 +1159,29 @@ export async function scanScreenshotForSkins({
       totalSlots: boxes.length,
     });
 
-    // Yield briefly every 2 slots so the browser repaints the live progress bar & percentage
-    if (i % 2 === 1 || i === boxes.length - 1) {
+    // Yield briefly every 2–3 slots so the browser smoothly repaints the live progress bar & percentage
+    const yieldStep = boxes.length > 30 ? 3 : 2;
+    if (i % yieldStep === yieldStep - 1 || i === boxes.length - 1) {
       await new Promise((r) => setTimeout(r, 0));
     }
   }
 
-  const detectedRows = boxes.length > 10 ? 3 : 2;
+  const layoutLabel = isCollageLayout
+    ? `ตารางสกินรวมไร้ขอบ (${detectedCols}×${detectedRows})`
+    : isShopLayout
+      ? `หน้าร้านค้าสกิน (5×${detectedRows})`
+      : `หน้ารายชื่อฮีโร่/สกิน (5×${detectedRows})`;
+
   return {
     fileName: file.name,
     screenshotUrl: dataUrl,
+    detectedCols,
     detectedRows,
-    layoutType: isShopLayout ? 'shop' : 'herolist',
-    layoutLabel: isShopLayout
-      ? `หน้าร้านค้าสกิน (5×${detectedRows})`
-      : `หน้ารายชื่อฮีโร่/สกิน (5×${detectedRows})`,
+    layoutType,
+    layoutLabel,
     totalSlots: boxes.length,
     slots,
   };
 }
+
 
